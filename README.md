@@ -1,5 +1,3 @@
 Proyecto fumigadora la ceiba iniciado
 
-Nueva linea nada mas de comprobacion
-
-Otra linea
+Linea comprobacion SSH
