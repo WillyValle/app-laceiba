@@ -1,0 +1,16 @@
+# Node modules
+frontend/node_modules
+
+# PHP vendor (si usas composer)
+backend/vendor
+
+# Archivos de entorno externos
+.env_laceiba
+.env_laceiba_docker
+
+# Docker volúmenes
+mysql_data
+
+# Archivos temporales del sistema
+*.log
+*.tmp

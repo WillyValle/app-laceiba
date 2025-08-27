@@ -6,20 +6,25 @@ services:
       - "80:80"
     volumes:
       - ./backend:/var/www/html
+    env_file:
+      - /home/sysadmin/.env_laceiba
+      - /home/sysadmin/.env_laceiba_docker
     depends_on:
       - mysql
 
   mysql:
     image: mysql:8
     environment:
-      MYSQL_ROOT_PASSWORD: rootpass
-      MYSQL_DATABASE: fumigadora
-      MYSQL_USER: fumigadora_user
-      MYSQL_PASSWORD: fumipass
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     ports:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+    env_file:
+      - /home/sysadmin/.env_laceiba
+      - /home/sysadmin/.env_laceiba_docker
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
@@ -27,9 +32,12 @@ services:
       - "8081:80"
     environment:
       PMA_HOST: mysql
-      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
     depends_on:
       - mysql
+    env_file:
+      - /home/sysadmin/.env_laceiba
+      - /home/sysadmin/.env_laceiba_docker
 
   react:
     image: node:18
