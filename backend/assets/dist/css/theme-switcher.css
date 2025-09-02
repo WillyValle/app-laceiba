@@ -1,0 +1,319 @@
+/* Variables de colores personalizados */
+:root {
+    --primary-green: #309469;
+    --secondary-yellow: #d0d537;
+    --light-bg: #f8f9fa;
+    --light-hover: #e9ecef;
+    --light-text: #495057;
+    --light-text-muted: #6c757d;
+}
+
+/* Estilos para el tema claro personalizado */
+.theme-light .main-header.navbar {
+    background-color: var(--light-bg) !important; /* Gris muy claro */
+    border-bottom: 1px solid var(--light-hover);
+}
+
+.theme-light .navbar-light .navbar-nav .nav-link {
+    color: var(--light-text) !important;
+}
+
+.theme-light .navbar-light .navbar-nav .nav-link:hover {
+    color: var(--primary-green) !important;
+}
+
+.theme-light .navbar-light .navbar-nav .nav-link:focus,
+.theme-light .navbar-light .navbar-nav .nav-link:active {
+    color: var(--secondary-yellow) !important;
+}
+
+.theme-light .main-sidebar {
+    background-color: var(--light-bg) !important;
+    border-right: 1px solid var(--light-hover);
+}
+
+.theme-light .main-sidebar .brand-link {
+    background-color: #ffffff !important;
+    border-bottom: 1px solid var(--light-hover);
+    color: var(--primary-green) !important;
+    font-weight: bold;
+}
+
+.theme-light .main-sidebar .brand-link:hover {
+    color: var(--secondary-yellow) !important;
+}
+
+.theme-light .main-sidebar .sidebar {
+    background-color: var(--light-bg) !important;
+}
+
+.theme-light .nav-sidebar .nav-item > .nav-link {
+    color: var(--light-text) !important;
+    background-color: transparent;
+}
+
+.theme-light .nav-sidebar .nav-item > .nav-link:hover {
+    background-color: var(--light-hover) !important;
+    color: var(--primary-green) !important;
+}
+
+.theme-light .nav-sidebar .nav-item > .nav-link.active {
+    background-color: var(--primary-green) !important;
+    color: #ffffff !important;
+}
+
+.theme-light .nav-sidebar .nav-item.menu-open > .nav-link {
+    background-color: var(--secondary-yellow) !important;
+    color: var(--light-text) !important;
+}
+
+.theme-light .nav-treeview .nav-item > .nav-link {
+    color: var(--light-text-muted) !important;
+    padding-left: 2.5rem;
+}
+
+.theme-light .nav-treeview .nav-item > .nav-link:hover {
+    background-color: var(--light-hover) !important;
+    color: var(--primary-green) !important;
+}
+
+.theme-light .nav-treeview .nav-item > .nav-link.active {
+    background-color: var(--secondary-yellow) !important;
+    color: var(--light-text) !important;
+}
+
+/* Estilos para el tema oscuro */
+.theme-dark .main-header.navbar {
+    background-color: #1a1a1a !important;
+    border-bottom: 1px solid var(--primary-green);
+}
+
+.theme-dark .navbar-dark .navbar-nav .nav-link {
+    color: #ffffff !important;
+}
+
+.theme-dark .navbar-dark .navbar-nav .nav-link:hover {
+    color: var(--secondary-yellow) !important;
+}
+
+.theme-dark .navbar-dark .navbar-nav .nav-link:focus,
+.theme-dark .navbar-dark .navbar-nav .nav-link:active {
+    color: var(--primary-green) !important;
+}
+
+.theme-dark .main-sidebar {
+    background-color: #2c2c2c !important;
+}
+
+.theme-dark .main-sidebar .brand-link {
+    background-color: #1a1a1a !important;
+    color: var(--secondary-yellow) !important;
+    border-bottom: 1px solid var(--primary-green);
+    font-weight: bold;
+}
+
+.theme-dark .main-sidebar .brand-link:hover {
+    color: var(--primary-green) !important;
+}
+
+.theme-dark .main-sidebar .sidebar {
+    background-color: #2c2c2c !important;
+}
+
+.theme-dark .nav-sidebar .nav-item > .nav-link {
+    color: #adb5bd !important;
+}
+
+.theme-dark .nav-sidebar .nav-item > .nav-link:hover {
+    background-color: #3c3c3c !important;
+    color: var(--secondary-yellow) !important;
+}
+
+.theme-dark .nav-sidebar .nav-item > .nav-link.active {
+    background-color: var(--primary-green) !important;
+    color: #ffffff !important;
+}
+
+.theme-dark .nav-sidebar .nav-item.menu-open > .nav-link {
+    background-color: var(--secondary-yellow) !important;
+    color: #1a1a1a !important;
+}
+
+.theme-dark .nav-treeview .nav-item > .nav-link {
+    color: #6c757d !important;
+}
+
+.theme-dark .nav-treeview .nav-item > .nav-link:hover {
+    background-color: #3c3c3c !important;
+    color: var(--secondary-yellow) !important;
+}
+
+.theme-dark .nav-treeview .nav-item > .nav-link.active {
+    background-color: var(--secondary-yellow) !important;
+    color: #1a1a1a !important;
+}
+
+/* Estilos adicionales para elementos específicos */
+
+/* Estilos para search y otros elementos */
+.theme-light .navbar-search-block .form-control {
+    border-color: var(--light-hover);
+}
+
+.theme-light .navbar-search-block .form-control:focus {
+    border-color: var(--primary-green);
+    box-shadow: 0 0 0 0.2rem rgba(48, 148, 105, 0.25);
+}
+
+.theme-light .btn-navbar {
+    color: var(--light-text);
+}
+
+.theme-light .btn-navbar:hover {
+    color: var(--primary-green);
+}
+
+.theme-dark .navbar-search-block .form-control {
+    background-color: #3c3c3c;
+    border-color: var(--primary-green);
+    color: #ffffff;
+}
+
+.theme-dark .navbar-search-block .form-control:focus {
+    border-color: var(--secondary-yellow);
+    box-shadow: 0 0 0 0.2rem rgba(208, 213, 55, 0.25);
+}
+
+.theme-dark .btn-navbar {
+    color: #adb5bd;
+}
+
+.theme-dark .btn-navbar:hover {
+    color: var(--secondary-yellow);
+}
+
+/* Estilos para el user panel */
+.theme-light .user-panel .info a {
+    color: var(--primary-green) !important;
+}
+
+.theme-light .user-panel .info a:hover {
+    color: var(--secondary-yellow) !important;
+}
+
+.theme-dark .user-panel .info a {
+    color: var(--secondary-yellow) !important;
+}
+
+.theme-dark .user-panel .info a:hover {
+    color: var(--primary-green) !important;
+}
+
+/* Estilos para el footer */
+.theme-light .main-footer {
+    background-color: #ffffff !important;
+    border-top: 1px solid var(--light-hover);
+    color: var(--light-text);
+}
+
+.theme-light .main-footer a {
+    color: var(--primary-green) !important;
+}
+
+.theme-light .main-footer a:hover {
+    color: var(--secondary-yellow) !important;
+}
+
+.theme-dark .main-footer {
+    background-color: #1a1a1a !important;
+    border-top: 1px solid var(--primary-green);
+    color: #adb5bd;
+}
+
+.theme-dark .main-footer a {
+    color: var(--secondary-yellow) !important;
+}
+
+.theme-dark .main-footer a:hover {
+    color: var(--primary-green) !important;
+}
+
+/* Estilos para el botón de cambio de tema */
+.theme-toggle-btn {
+    background: none;
+    border: none;
+    color: inherit;
+    font-size: 1.1rem;
+    transition: all 0.3s ease;
+}
+
+.theme-toggle-btn:hover {
+    transform: scale(1.1);
+    color: var(--primary-green) !important;
+}
+
+.theme-dark .theme-toggle-btn:hover {
+    color: var(--secondary-yellow) !important;
+}
+
+.theme-toggle-btn:focus {
+    outline: none;
+    box-shadow: 0 0 0 0.2rem rgba(48, 148, 105, 0.25);
+}
+
+.theme-dark .theme-toggle-btn:focus {
+    box-shadow: 0 0 0 0.2rem rgba(208, 213, 55, 0.25);
+}
+
+/* Animación suave para el cambio de tema */
+body, .main-header, .main-sidebar, .nav-link, .main-footer {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Personalización adicional para botones y elementos interactivos */
+.theme-light .btn-primary {
+    background-color: var(--primary-green);
+    border-color: var(--primary-green);
+}
+
+.theme-light .btn-primary:hover {
+    background-color: var(--secondary-yellow);
+    border-color: var(--secondary-yellow);
+    color: #1a1a1a;
+}
+
+.theme-dark .btn-primary {
+    background-color: var(--primary-green);
+    border-color: var(--primary-green);
+}
+
+.theme-dark .btn-primary:hover {
+    background-color: var(--secondary-yellow);
+    border-color: var(--secondary-yellow);
+    color: #1a1a1a;
+}
+
+/* Estilos para alertas y notificaciones personalizadas */
+.theme-light .alert-success {
+    background-color: rgba(48, 148, 105, 0.1);
+    border-color: var(--primary-green);
+    color: var(--primary-green);
+}
+
+.theme-light .alert-warning {
+    background-color: rgba(208, 213, 55, 0.1);
+    border-color: var(--secondary-yellow);
+    color: #856b00;
+}
+
+.theme-dark .alert-success {
+    background-color: rgba(48, 148, 105, 0.2);
+    border-color: var(--primary-green);
+    color: var(--primary-green);
+}
+
+.theme-dark .alert-warning {
+    background-color: rgba(208, 213, 55, 0.2);
+    border-color: var(--secondary-yellow);
+    color: var(--secondary-yellow);
+}

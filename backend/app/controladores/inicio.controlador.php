@@ -1,10 +1,14 @@
 <?php
 
+require_once "app/modelos/servicecategory.php";
+require_once "app/modelos/applicationmethod.php";
+require_once "app/modelos/servicestatus.php";
+
 class InicioControlador{
     private $modelo;
 
     public function __CONSTRUCT(){
-        //$this->modelo = new InicioModelo();
+        $this->modelo = new ServiceCategory();
     }
 
     public function Inicio(){

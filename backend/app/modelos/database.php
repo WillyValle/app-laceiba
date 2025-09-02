@@ -1,10 +1,6 @@
 <?php
 
 class BasedeDatos{
-    /*const servidor = "mysql";
-    const usuariobd = "USR_APP_LACEIBA_DB";
-    const clave = "L7IOeIRN3LPkt";
-    const nombrebd = "APP_La_Ceiba_DB";*/
 
     public static function Conectar(){
         $host = getenv('DB_HOST');

@@ -1,0 +1,198 @@
+/* Estilos para edición inline de tablas */
+
+/* Tabla en modo edición */
+.tabla-editando {
+  position: relative;
+}
+
+/* Filas opacas cuando hay una en edición */
+.fila-opaca {
+  opacity: 0.3;
+  transition: opacity 0.3s ease;
+}
+
+/* Fila que está siendo editada */
+.fila-editando {
+  opacity: 1 !important;
+  background-color: #e3f2fd !important;
+  border: 2px solid #2196f3 !important;
+  box-shadow: 0 4px 8px rgba(33, 150, 243, 0.2);
+  transition: all 0.3s ease;
+}
+
+/* Inputs dentro de las celdas */
+.celda-input {
+  border: none !important;
+  background: transparent !important;
+  padding: 4px 8px;
+  font-size: 14px;
+  width: 100%;
+  box-shadow: none !important;
+  border-bottom: 2px solid #ddd !important;
+  border-radius: 0 !important;
+}
+
+.celda-input:focus {
+  border-bottom-color: #007bff !important;
+  outline: none !important;
+  background-color: rgba(0, 123, 255, 0.05) !important;
+}
+
+/* Textarea dentro de celdas */
+.celda-textarea {
+  border: none !important;
+  background: transparent !important;
+  padding: 4px 8px;
+  font-size: 14px;
+  width: 100%;
+  min-height: 40px;
+  resize: vertical;
+  box-shadow: none !important;
+  border-bottom: 2px solid #ddd !important;
+  border-radius: 0 !important;
+}
+
+.celda-textarea:focus {
+  border-bottom-color: #007bff !important;
+  outline: none !important;
+  background-color: rgba(0, 123, 255, 0.05) !important;
+}
+
+/* Checkbox personalizado para estado */
+.switch-estado {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 24px;
+}
+
+.switch-estado input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: 0.4s;
+  border-radius: 24px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.4s;
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+  background-color: #28a745;
+}
+
+input:checked + .slider:before {
+  transform: translateX(26px);
+}
+
+/* Botones de acción en modo edición */
+.botones-edicion {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.botones-edicion .btn {
+  font-size: 12px;
+  padding: 4px 8px;
+}
+
+/* Tabla de inactivos expandible */
+.tabla-inactivos-container {
+  margin-top: 30px;
+  border-top: 3px solid #6c757d;
+  padding-top: 20px;
+}
+
+.btn-toggle-inactivos {
+  background-color: #6c757d;
+  border-color: #6c757d;
+  transition: all 0.3s ease;
+}
+
+.btn-toggle-inactivos:hover {
+  background-color: #5a6268;
+  border-color: #545b62;
+}
+
+.tabla-inactivos {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 5px;
+  margin-top: 15px;
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: all 0.3s ease-in-out;
+}
+
+.tabla-inactivos.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.tabla-inactivos .table {
+  margin-bottom: 0;
+}
+
+.tabla-inactivos .card-header {
+  background-color: #6c757d;
+  color: white;
+}
+
+/* Indicador de registro inactivo */
+.registro-inactivo {
+  background-color: #f8f9fa !important;
+  color: #6c757d;
+}
+
+/* Animaciones para transiciones de estado */
+.fila-desapareciendo {
+  opacity: 0;
+  transform: translateX(-100%);
+  transition: all 0.5s ease;
+}
+
+.fila-apareciendo {
+  opacity: 0;
+  transform: translateX(100%);
+  animation: aparecer 0.5s ease forwards;
+}
+
+@keyframes aparecer {
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Responsive para botones pequeños */
+@media (max-width: 768px) {
+  .botones-edicion {
+    flex-direction: column;
+  }
+  
+  .botones-edicion .btn {
+    font-size: 11px;
+    padding: 3px 6px;
+  }
+}
+
