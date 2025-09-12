@@ -75,7 +75,7 @@
         <tr id="fila-<?=$r->ID_ROLE_EMPLOYEE?>-activos" data-id="<?=$r->ID_ROLE_EMPLOYEE?>">
           <td><?=$r->NAME_ROLE_EMPLOYEE?></td>
           <td><?=$r->DESCRIPTION?></td>
-          <td>Activo</td>
+          <td><span class="badge badge-success">Activo</span></td>
           <td>
             <button class="btn btn-warning btn-sm" onclick="editarFila(<?=$r->ID_ROLE_EMPLOYEE?>, 'activos')">
               <i class="fas fa-edit"></i> Editar
@@ -131,7 +131,7 @@
                 <tr id="fila-<?=$r->ID_ROLE_EMPLOYEE?>-inactivos" class="registro-inactivo" data-id="<?=$r->ID_ROLE_EMPLOYEE?>">
                   <td><?=$r->NAME_ROLE_EMPLOYEE?></td>
                   <td><?=$r->DESCRIPTION?></td>
-                  <td>Inactivo</td>
+                  <td><span class="badge badge-danger">Inactivo</span></td>
                   <td>
                     <button class="btn btn-warning btn-sm" onclick="editarFila(<?=$r->ID_ROLE_EMPLOYEE?>, 'inactivos')">
                       <i class="fas fa-edit"></i> Editar

@@ -75,7 +75,7 @@
         <tr id="fila-<?=$r->ID_TYPE_DOC?>-activos" data-id="<?=$r->ID_TYPE_DOC?>">
           <td><?=$r->NAME_TYPE_DOC?></td>
           <td><?=$r->DESCRIPTION?></td>
-          <td>Activo</td>
+          <td><span class="badge badge-success">Activo</span></td>
           <td>
             <button class="btn btn-warning btn-sm" onclick="editarFila(<?=$r->ID_TYPE_DOC?>, 'activos')">
               <i class="fas fa-edit"></i> Editar
@@ -131,7 +131,7 @@
                 <tr id="fila-<?=$r->ID_TYPE_DOC?>-inactivos" class="registro-inactivo" data-id="<?=$r->ID_TYPE_DOC?>">
                   <td><?=$r->NAME_TYPE_DOC?></td>
                   <td><?=$r->DESCRIPTION?></td>
-                  <td>Inactivo</td>
+                  <td><span class="badge badge-danger">Inactivo</span></td>
                   <td>
                     <button class="btn btn-warning btn-sm" onclick="editarFila(<?=$r->ID_TYPE_DOC?>, 'inactivos')">
                       <i class="fas fa-edit"></i> Editar

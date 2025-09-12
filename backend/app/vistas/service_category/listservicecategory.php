@@ -75,7 +75,7 @@
         <tr id="fila-<?=$r->ID_SERVICE_CATEGORY?>-activos" data-id="<?=$r->ID_SERVICE_CATEGORY?>">
           <td><?=$r->NAME_SERVICE_CATEGORY?></td>
           <td><?=$r->DESCRIPTION?></td>
-          <td>Activo</td>
+          <td><span class="badge badge-success">Activo</span></td>
           <td>
             <button class="btn btn-warning btn-sm" onclick="editarFila(<?=$r->ID_SERVICE_CATEGORY?>, 'activos')">
               <i class="fas fa-edit"></i> Editar
@@ -131,7 +131,7 @@
                 <tr id="fila-<?=$r->ID_SERVICE_CATEGORY?>-inactivos" class="registro-inactivo" data-id="<?=$r->ID_SERVICE_CATEGORY?>">
                   <td><?=$r->NAME_SERVICE_CATEGORY?></td>
                   <td><?=$r->DESCRIPTION?></td>
-                  <td>Inactivo</td>
+                  <td><span class="badge badge-danger">Inactivo</span></td>
                   <td>
                     <button class="btn btn-warning btn-sm" onclick="editarFila(<?=$r->ID_SERVICE_CATEGORY?>, 'inactivos')">
                       <i class="fas fa-edit"></i> Editar

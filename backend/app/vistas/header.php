@@ -17,6 +17,8 @@
   <link rel="stylesheet" href="assets/dist/css/inline-edit.css">
   <!-- Estilos para el theme switcher -->
   <link rel="stylesheet" href="assets/dist/css/theme-switcher.css">
+  <!-- Estilos para filtro de contactos -->
+  <link rel="stylesheet" href="assets/dist/css/filtro-contactos.css">
 </head>
 <body class="hold-transition sidebar-mini theme-light">
 <div class="wrapper">
@@ -86,7 +88,7 @@
   <aside class="main-sidebar sidebar-dark-primary elevation-4">
     <!-- Brand Logo -->
     <a href="index.php" class="brand-link">
-      <img src="assets/dist/img/AdminLTELogo.png" alt="AdminLTE Logo" class="brand-image img-circle elevation-3" style="opacity: .8">
+      <img src="assets/dist/img/logolaceiba.png" alt="Logo La Ceiba" class="brand-image img-circle elevation-3" style="opacity: .8">
       <span class="brand-text font-weight-light">APP La Ceiba</span>
     </a>
 
@@ -98,7 +100,7 @@
           <img src="assets/dist/img/user2-160x160.jpg" class="img-circle elevation-2" alt="User Image">
         </div>
         <div class="info">
-          <a href="#" class="d-block">Geovani Aldana</a>
+          <a href="#" class="d-block">Administrador</a>
         </div>
       </div>
 
@@ -172,15 +174,9 @@
       </a>
       <ul class="nav nav-treeview">
         <li class="nav-item">
-          <a href="?c=client" class="nav-link">
+          <a href="?c=customer" class="nav-link">
             <i class="far fa-circle nav-icon"></i>
             <p>Gestionar Clientes</p>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a href="?c=clienttype" class="nav-link">
-            <i class="far fa-circle nav-icon"></i>
-            <p>Tipos de Cliente</p>
           </a>
         </li>
       </ul>
@@ -197,6 +193,18 @@
       </a>
       <ul class="nav nav-treeview">
         <li class="nav-item">
+          <a href="?c=employee" class="nav-link">
+            <i class="far fa-circle nav-icon"></i>
+            <p>Gestionar Empleados</p>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="?c=useremployee" class="nav-link">
+            <i class="far fa-circle nav-icon"></i>
+            <p>Usuarios Empleados</p>
+          </a>
+        </li>
+        <li class="nav-item">
           <a href="?c=roleemployee" class="nav-link">
             <i class="far fa-circle nav-icon"></i>
             <p>Tipo de Empleados</p>
@@ -206,31 +214,6 @@
           <a href="?c=roleinservice" class="nav-link">
             <i class="far fa-circle nav-icon"></i>
             <p>Empleados en Servicio</p>
-          </a>
-        </li>
-      </ul>
-    </li>
-
-        <!-- Opciones Contacto -->
-    <li class="nav-item">
-      <a href="#" class="nav-link">
-        <i class="nav-icon fas fa-phone"></i>
-        <p>
-          Contacto
-          <i class="right fas fa-angle-left"></i>
-        </p>
-      </a>
-      <ul class="nav nav-treeview">
-        <li class="nav-item">
-          <a href="?c=client" class="nav-link">
-            <i class="far fa-circle nav-icon"></i>
-            <p>Contactos</p>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a href="?c=contacttype" class="nav-link">
-            <i class="far fa-circle nav-icon"></i>
-            <p>Tipos de Contactos</p>
           </a>
         </li>
       </ul>
