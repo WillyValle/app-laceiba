@@ -2,7 +2,7 @@
   <footer class="main-footer">
     <!-- To the right -->
     <div class="float-right d-none d-sm-inline">
-      Anything you want
+      No. Licencia Sanitaria: L-S-2917-2022
     </div>
     <!-- Default to the left -->
     <strong>Copyright &copy; 2025 <a href="#">Fumigadora La Ceiba</a>.</strong>
@@ -26,5 +26,7 @@
 <script src="assets/dist/js/theme-switcher.js"></script>
 <!-- Script para filtro de contactos -->
 <script src="assets/dist/js/filtro-contactos.js"></script>
+<!-- Script para dashboard de gestion de servicios -->
+<script src="assets/dist/js/dashboard-service..js"></script>
 </body>
 </html>

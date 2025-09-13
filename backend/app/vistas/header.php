@@ -19,6 +19,8 @@
   <link rel="stylesheet" href="assets/dist/css/theme-switcher.css">
   <!-- Estilos para filtro de contactos -->
   <link rel="stylesheet" href="assets/dist/css/filtro-contactos.css">
+  <!-- Estilo Dashboard Gestion de Servicios -->
+  <link rel="stylesheet" href="assets/dist/css/dashboard-service.css">
 </head>
 <body class="hold-transition sidebar-mini theme-light">
 <div class="wrapper">
@@ -131,15 +133,15 @@
       </a>
       <ul class="nav nav-treeview">
         <li class="nav-item">
-          <a href="#" class="nav-link">
+          <a href="?c=service&a=NuevoServicio" class="nav-link">
             <i class="far fa-circle nav-icon"></i>
             <p>Programar Servicio</p>
           </a>
         </li>
         <li class="nav-item">
-          <a href="#" class="nav-link">
+          <a href="?c=service" class="nav-link">
             <i class="far fa-circle nav-icon"></i>
-            <p>Servicios Pendientes</p>
+            <p>Gestionar Servicios</p>
           </a>
         </li>
         <li class="nav-item">
@@ -152,12 +154,6 @@
           <a href="?c=applicationmethod" class="nav-link">
             <i class="far fa-circle nav-icon"></i>
             <p>Métodos de Aplicación</p>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a href="?c=servicestatus" class="nav-link">
-            <i class="far fa-circle nav-icon"></i>
-            <p>Estados de Servicios</p>
           </a>
         </li>
       </ul>
@@ -204,10 +200,35 @@
             <p>Usuarios Empleados</p>
           </a>
         </li>
+      </ul>
+    </li>
+
+    <!-- Configuración -->
+    <li class="nav-item">
+      <a href="#" class="nav-link">
+        <i class="nav-icon fas fa-cog"></i>
+        <p>
+          Configuración
+          <i class="right fas fa-angle-left"></i>
+        </p>
+      </a>
+      <ul class="nav nav-treeview">
+        <li class="nav-item">
+          <a href="?c=servicestatus" class="nav-link">
+            <i class="far fa-circle nav-icon"></i>
+            <p>Estados de los Servicios</p>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="?c=typedoc" class="nav-link">
+            <i class="far fa-circle nav-icon"></i>
+            <p>Tipos de Documentos Aceptados</p>
+          </a>
+        </li>
         <li class="nav-item">
           <a href="?c=roleemployee" class="nav-link">
             <i class="far fa-circle nav-icon"></i>
-            <p>Tipo de Empleados</p>
+            <p>Tipos de Empleados</p>
           </a>
         </li>
         <li class="nav-item">
@@ -217,15 +238,6 @@
           </a>
         </li>
       </ul>
-    </li>
-
-<!-- Tipos de documentos -->
-    <li class="nav-item">
-          <a href="?c=typedoc" class="nav-link">
-            <i class="far fa-circle nav-icon"></i>
-            <p>Tipos de Documentos</p>
-          </a>
-        </li>
 
   </ul>
 </nav>

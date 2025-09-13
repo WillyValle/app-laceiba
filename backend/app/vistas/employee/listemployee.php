@@ -19,13 +19,13 @@
       <table id="tabla-activos" class="table table-bordered table-striped">
         <thead>
         <tr>
-          <th>Nombre Empleado</th>
-          <th>Apellido Empleado</th>
+          <th>Nombre</th>
+          <th>Apellido</th>
           <th>Dirección</th>
           <th>Tipo Doc.</th>
           <th>Número Doc.</th>
           <th>Imagen</th>
-          <th>Rol</th>
+          <th>Tipo de Empleado</th>
           <th>WhatsApp</th>
           <th>Teléfono</th>
           <th>Email</th>
