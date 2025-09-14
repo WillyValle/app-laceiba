@@ -145,6 +145,13 @@
           </a>
         </li>
         <li class="nav-item">
+          <a href="?c=service&a=VistaTecnico" class="nav-link">
+            <i class="far fa-circle nav-icon"></i>
+            <p>Vista Técnicos</p>
+          </a>
+        </li>
+
+        <li class="nav-item">
           <a href="?c=servicecategory" class="nav-link">
             <i class="far fa-circle nav-icon"></i>
             <p>Categoría de Servicios</p>

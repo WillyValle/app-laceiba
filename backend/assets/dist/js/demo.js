@@ -75,6 +75,20 @@
       $('body').removeClass('dark-mode')
     }
   })
+
+  $('[data-toggle="dark-mode"]').on('click', function () {
+  if ($('body').hasClass('dark-mode')) {
+    $('body').removeClass('dark-mode').addClass('theme-light');
+    $('#theme-icon').removeClass('fa-sun').addClass('fa-moon'); // cambia a luna
+  } else {
+    $('body').removeClass('theme-light').addClass('dark-mode');
+    $('#theme-icon').removeClass('fa-moon').addClass('fa-sun'); // cambia a sol
+  }
+  });
+
+
+
+
   var $dark_mode_container = $('<div />', { class: 'mb-4' }).append($dark_mode_checkbox).append('<span>Dark Mode</span>')
   $container.append($dark_mode_container)
 

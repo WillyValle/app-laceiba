@@ -8,59 +8,6 @@ let offsetServicios = {
     'finalizados': 0
 };
 
-function verMasServicios(estado, tipo) {
-    const boton = event.target;
-    const tablaId = 'tabla-' + tipo;
-    
-    // Deshabilitar botón mientras carga
-    boton.classList.add('loading');
-    boton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Cargando...';
-    boton.disabled = true;
-    
-    // Construir URL con filtros actuales
-    const params = new URLSearchParams(window.location.search);
-    params.set('c', 'service');
-    params.set('a', 'ObtenerMasServicios');
-    params.set('estado', estado);
-    params.set('offset', offsetServicios[tipo]);
-    params.set('limit', 10);
-    
-    fetch('?' + params.toString())
-        .then(response => response.json())
-        .then(data => {
-            if (data && data.length > 0) {
-                // Agregar nuevas filas a la tabla
-                const tbody = document.getElementById(tablaId);
-                
-                data.forEach(servicio => {
-                    const fila = crearFilaServicio(servicio, tipo);
-                    tbody.appendChild(fila);
-                });
-                
-                // Actualizar offset
-                offsetServicios[tipo] += data.length;
-                
-                // Actualizar botón o ocultarlo si no hay más
-                if (data.length < 10) {
-                    boton.style.display = 'none';
-                } else {
-                    boton.innerHTML = '<i class="fas fa-chevron-down"></i> Ver más';
-                    boton.classList.remove('loading');
-                    boton.disabled = false;
-                }
-            } else {
-                // No hay más servicios
-                boton.style.display = 'none';
-            }
-        })
-        .catch(error => {
-            console.error('Error al cargar servicios:', error);
-            boton.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error al cargar';
-            boton.classList.remove('loading');
-            boton.disabled = false;
-        });
-}
-
 /**
  * Función auxiliar para crear filas de servicio dinámicamente
  */

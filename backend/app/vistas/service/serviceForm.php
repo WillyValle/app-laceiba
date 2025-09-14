@@ -1,8 +1,14 @@
 <!-- Vista para crear nuevo servicio - app/vistas/service/serviceForm.php -->
 
-<div id="formularioService" class="card card-primary">
-  <div class="card-header">
-    <h3 class="card-title">Programar Nuevo Servicio</h3>
+
+  <div class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1 class="m-0"><?= isset($titulo_pagina) ? $titulo_pagina : 'Programar Nuevo Servicio' ?></h1>
+                </div>
+            </div>
+        </div>
   </div>
 
   <!-- Mostrar mensajes de éxito -->
@@ -181,7 +187,7 @@
     </div>
   </form>
 </div>
-                </div>
+                
 
 <!-- JavaScript para validaciones y mejoras UX -->
 <script>

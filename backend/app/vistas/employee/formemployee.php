@@ -1,8 +1,12 @@
-<div id="formularioEmployee" class="card card-primary">
+
   <div class="card-header">
-    <h3 class="card-title">
-      <?php echo isset($datos) ? 'Editar Empleado' : 'Agregar Empleado'; ?>
-    </h3>
+    <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h3 class="m-0"><?php echo isset($datos) ?'Editar Empleado' :'Agregar Empleado'; ?></h3>
+                </div>
+            </div>
+        </div>
   </div>
   <form action="?c=employee&a=Guardar" method="POST">
     <input type="hidden" id="id_employee" name="id_employee" value="<?php echo isset($datos) ? $datos->id_employee : ''; ?>">
@@ -186,4 +190,3 @@
     </div>
   </form>
 </div>
-      </div>

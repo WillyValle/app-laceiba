@@ -87,46 +87,82 @@ class Service{
      * @param int|null $limit Límite de registros (null para todos)
      * @return array
      */
-    public function ObtenerPorEstado($status_id, $limit = null){
-        try{
-            $sql = "
-            SELECT
-                s.id_service,
-                s.notes,
-                s.preset_dt_hr,
-                s.start_dt_hr,
-                s.end_dt_hr,
-                s.inspection_problems,
-                s.inspection_location,
-                s.inspection_methods,
-                s.customer_id_customer,
-                c.name_customer,
-                c.address_customer,
-                c.whatsapp as customer_whatsapp,
-                s.service_status_id_service_status,
-                ss.name_service_status,
-                GROUP_CONCAT(DISTINCT CONCAT(e.name_employee, ' ', e.lastname_employee) SEPARATOR ', ') as empleados_asignados
-            FROM SERVICE s
-            INNER JOIN CUSTOMER c ON s.customer_id_customer = c.id_customer
-            INNER JOIN SERVICE_STATUS ss ON s.service_status_id_service_status = ss.id_service_status
-            LEFT JOIN SRVIC_EMPLOYEE se ON s.id_service = se.service_id_service
-            LEFT JOIN EMPLOYEE e ON se.employee_id_employee = e.id_employee
-            WHERE s.service_status_id_service_status = ?
-            GROUP BY s.id_service
-            ORDER BY s.preset_dt_hr DESC
-            ";
-            
-            if ($limit !== null) {
-                $sql .= " LIMIT " . (int)$limit;
-            }
-            
-            $consulta = $this->pdo->prepare($sql);
-            $consulta->execute(array($status_id));
-            return $consulta->fetchAll(PDO::FETCH_OBJ);
-        }catch(Exception $e){
-            die($e->getMessage());
+    public function ObtenerPorEstado($status_id, $limit = null, $offset = null){
+    try {
+        $sql = "
+        SELECT
+            s.id_service,
+            s.notes,
+            s.preset_dt_hr,
+            s.start_dt_hr,
+            s.end_dt_hr,
+            s.inspection_problems,
+            s.inspection_location,
+            s.inspection_methods,
+            s.customer_id_customer,
+            c.name_customer,
+            c.address_customer,
+            c.whatsapp as customer_whatsapp,
+            s.service_status_id_service_status,
+            ss.name_service_status,
+            GROUP_CONCAT(DISTINCT CONCAT(e.name_employee, ' ', e.lastname_employee) SEPARATOR ', ') as empleados_asignados
+        FROM SERVICE s
+        INNER JOIN CUSTOMER c ON s.customer_id_customer = c.id_customer
+        INNER JOIN SERVICE_STATUS ss ON s.service_status_id_service_status = ss.id_service_status
+        LEFT JOIN SRVIC_EMPLOYEE se ON s.id_service = se.service_id_service
+        LEFT JOIN EMPLOYEE e ON se.employee_id_employee = e.id_employee
+        WHERE s.service_status_id_service_status = :status_id
+        ";
+
+        // Rango del mes actual
+        $inicioMes = date('Y-m-01 00:00:00');
+        $finMes = date('Y-m-t 23:59:59');
+
+        // Filtro por fecha según estado
+        switch ($status_id) {
+            case 1:
+                $sql .= " AND s.preset_dt_hr BETWEEN :inicio AND :fin ";
+                $ordenCampo = "s.preset_dt_hr";
+                break;
+            case 2:
+                $sql .= " AND s.start_dt_hr BETWEEN :inicio AND :fin ";
+                $ordenCampo = "s.start_dt_hr";
+                break;
+            case 3:
+                $sql .= " AND s.end_dt_hr BETWEEN :inicio AND :fin ";
+                $ordenCampo = "s.end_dt_hr";
+                break;
+            default:
+                $ordenCampo = "s.preset_dt_hr";
+                break;
         }
+
+        // Agrupar antes de ordenar
+        $sql .= " GROUP BY s.id_service ";
+        $sql .= " ORDER BY $ordenCampo ASC ";
+
+        // Límite y offset
+        if ($limit !== null) {
+            $sql .= " LIMIT " . (int)$limit;
+            if ($offset !== null) {
+                $sql .= " OFFSET " . (int)$offset;
+            }
+        }
+
+        $consulta = $this->pdo->prepare($sql);
+        $consulta->bindParam(':status_id', $status_id, PDO::PARAM_INT);
+
+        if (in_array($status_id, [1, 2, 3])) {
+            $consulta->bindParam(':inicio', $inicioMes, PDO::PARAM_STR);
+            $consulta->bindParam(':fin', $finMes, PDO::PARAM_STR);
+        }
+
+        $consulta->execute();
+        return $consulta->fetchAll(PDO::FETCH_OBJ);
+    } catch (Exception $e) {
+        die($e->getMessage());
     }
+}
 
     /**
      * Obtener servicios con filtros aplicados
@@ -197,7 +233,7 @@ class Service{
                 $sql .= " WHERE " . implode(" AND ", $condiciones);
             }
             
-            $sql .= " GROUP BY s.id_service ORDER BY s.preset_dt_hr DESC";
+            $sql .= " GROUP BY s.id_service ORDER BY s.preset_dt_hr ASC";
             
             if ($limit !== null) {
                 $sql .= " LIMIT " . (int)$limit;
@@ -533,5 +569,202 @@ public function ValidarEstadoServicio($id_estado){
         return false;
     }
 }
+
+
+
+//Nuevos métodos para vista de técnicos
+
+// NUEVOS MÉTODOS AGREGADOS AL MODELO service.php
+
+/**
+ * Obtener servicios programados asignados a un empleado como encargado
+ * @param int $id_empleado ID del empleado encargado
+ * @return array Servicios programados del empleado
+ */
+public function ObtenerServiciosProgramadosEmpleado($id_empleado){
+    try{
+        $sql = "
+        SELECT DISTINCT
+            s.id_service,
+            s.notes,
+            s.preset_dt_hr,
+            s.start_dt_hr,
+            s.end_dt_hr,
+            s.customer_id_customer,
+            c.name_customer,
+            c.address_customer,
+            c.whatsapp as customer_whatsapp,
+            c.tel as customer_tel,
+            s.service_status_id_service_status,
+            ss.name_service_status,
+            CONCAT(e_enc.name_employee, ' ', e_enc.lastname_employee) as empleado_encargado
+        FROM SERVICE s
+        INNER JOIN CUSTOMER c ON s.customer_id_customer = c.id_customer
+        INNER JOIN SERVICE_STATUS ss ON s.service_status_id_service_status = ss.id_service_status
+        INNER JOIN SRVIC_EMPLOYEE se ON s.id_service = se.service_id_service
+        INNER JOIN EMPLOYEE e_enc ON se.employee_id_employee = e_enc.id_employee
+        INNER JOIN ROLE_IN_SERVICE ris ON se.role_in_service_id_role_in_service = ris.id_role_in_service
+        WHERE se.employee_id_employee = :id_empleado
+        AND LOWER(ris.name_role_in_service) LIKE '%encargado%'
+        AND s.service_status_id_service_status = 1
+        AND s.preset_dt_hr >= CURDATE()
+        ORDER BY s.preset_dt_hr ASC
+        ";
+        
+        $consulta = $this->pdo->prepare($sql);
+        $consulta->bindParam(':id_empleado', $id_empleado, PDO::PARAM_INT);
+        $consulta->execute();
+        return $consulta->fetchAll(PDO::FETCH_OBJ);
+    }catch(Exception $e){
+        throw new Exception("Error al obtener servicios programados del empleado: " . $e->getMessage());
+    }
+}
+
+/**
+ * Iniciar un servicio - actualizar estado a "Iniciado" y registrar fecha/hora de inicio
+ * @param int $id_servicio ID del servicio a iniciar
+ * @param int $id_empleado ID del empleado que inicia (para validación)
+ * @return bool Resultado de la operación
+ */
+public function IniciarServicio($id_servicio, $id_empleado){
+    try{
+        $this->pdo->beginTransaction();
+        
+        // Primero validar que el empleado sea el encargado del servicio
+        $sql_validar = "
+        SELECT COUNT(*) as es_encargado
+        FROM SERVICE s
+        INNER JOIN SRVIC_EMPLOYEE se ON s.id_service = se.service_id_service
+        INNER JOIN ROLE_IN_SERVICE ris ON se.role_in_service_id_role_in_service = ris.id_role_in_service
+        WHERE s.id_service = :id_servicio
+        AND se.employee_id_employee = :id_empleado
+        AND LOWER(ris.name_role_in_service) LIKE '%encargado%'
+        AND s.service_status_id_service_status = 1
+        ";
+        
+        $consulta_validar = $this->pdo->prepare($sql_validar);
+        $consulta_validar->bindParam(':id_servicio', $id_servicio, PDO::PARAM_INT);
+        $consulta_validar->bindParam(':id_empleado', $id_empleado, PDO::PARAM_INT);
+        $consulta_validar->execute();
+        
+        $validacion = $consulta_validar->fetch(PDO::FETCH_OBJ);
+        
+        if ($validacion->es_encargado == 0) {
+            throw new Exception("El empleado no está autorizado para iniciar este servicio o el servicio no está en estado programado");
+        }
+        
+        // Obtener ID del estado "En ejecución" o "Iniciado"
+        $sql_estado = "SELECT id_service_status FROM SERVICE_STATUS 
+                      WHERE (LOWER(name_service_status) LIKE '%ejecuci%' 
+                      OR LOWER(name_service_status) LIKE '%iniciado%'
+                      OR LOWER(name_service_status) LIKE '%proceso%')
+                      AND status = 1 LIMIT 1";
+        $consulta_estado = $this->pdo->prepare($sql_estado);
+        $consulta_estado->execute();
+        $estado = $consulta_estado->fetch(PDO::FETCH_OBJ);
+        
+        if (!$estado) {
+            // Si no existe, usar el estado 2 por defecto (según tu estructura actual)
+            $id_estado_iniciado = 2;
+        } else {
+            $id_estado_iniciado = $estado->id_service_status;
+        }
+        
+        // Actualizar el servicio con la fecha/hora de inicio y nuevo estado
+        $sql_actualizar = "
+        UPDATE SERVICE 
+        SET start_dt_hr = NOW(),
+            service_status_id_service_status = :nuevo_estado
+        WHERE id_service = :id_servicio
+        ";
+        
+        $consulta_actualizar = $this->pdo->prepare($sql_actualizar);
+        $consulta_actualizar->bindParam(':nuevo_estado', $id_estado_iniciado, PDO::PARAM_INT);
+        $consulta_actualizar->bindParam(':id_servicio', $id_servicio, PDO::PARAM_INT);
+        $consulta_actualizar->execute();
+        
+        if ($consulta_actualizar->rowCount() == 0) {
+            throw new Exception("No se pudo actualizar el servicio");
+        }
+        
+        $this->pdo->commit();
+        return true;
+    }catch(Exception $e){
+        $this->pdo->rollback();
+        throw new Exception("Error al iniciar servicio: " . $e->getMessage());
+    }
+}
+
+/**
+ * Validar si un empleado es encargado de un servicio específico
+ * @param int $id_servicio ID del servicio
+ * @param int $id_empleado ID del empleado
+ * @return bool True si es encargado, False en caso contrario
+ */
+public function ValidarEncargadoServicio($id_servicio, $id_empleado){
+    try{
+        $sql = "
+        SELECT COUNT(*) as es_encargado
+        FROM SERVICE s
+        INNER JOIN SRVIC_EMPLOYEE se ON s.id_service = se.service_id_service
+        INNER JOIN ROLE_IN_SERVICE ris ON se.role_in_service_id_role_in_service = ris.id_role_in_service
+        WHERE s.id_service = :id_servicio
+        AND se.employee_id_employee = :id_empleado
+        AND LOWER(ris.name_role_in_service) LIKE '%encargado%'
+        ";
+        
+        $consulta = $this->pdo->prepare($sql);
+        $consulta->bindParam(':id_servicio', $id_servicio, PDO::PARAM_INT);
+        $consulta->bindParam(':id_empleado', $id_empleado, PDO::PARAM_INT);
+        $consulta->execute();
+        
+        $resultado = $consulta->fetch(PDO::FETCH_OBJ);
+        return $resultado->es_encargado > 0;
+    }catch(Exception $e){
+        return false;
+    }
+}
+
+/**
+ * Obtener detalles de un servicio específico para técnicos
+ * Incluye información completa del cliente y estado
+ * @param int $id_servicio ID del servicio
+ * @return object|false Datos del servicio o false si no existe
+ */
+public function ObtenerDetalleServicioTecnico($id_servicio){
+    try{
+        $sql = "
+        SELECT 
+            s.*,
+            c.name_customer,
+            c.address_customer,
+            c.whatsapp as customer_whatsapp,
+            c.tel as customer_tel,
+            c.mail as customer_mail,
+            ss.name_service_status,
+            GROUP_CONCAT(
+                CONCAT(e.name_employee, ' ', e.lastname_employee, ' (', ris.name_role_in_service, ')')
+                SEPARATOR ', '
+            ) as empleados_asignados
+        FROM SERVICE s
+        INNER JOIN CUSTOMER c ON s.customer_id_customer = c.id_customer
+        INNER JOIN SERVICE_STATUS ss ON s.service_status_id_service_status = ss.id_service_status
+        LEFT JOIN SRVIC_EMPLOYEE se ON s.id_service = se.service_id_service
+        LEFT JOIN EMPLOYEE e ON se.employee_id_employee = e.id_employee
+        LEFT JOIN ROLE_IN_SERVICE ris ON se.role_in_service_id_role_in_service = ris.id_role_in_service
+        WHERE s.id_service = :id_servicio
+        GROUP BY s.id_service
+        ";
+        
+        $consulta = $this->pdo->prepare($sql);
+        $consulta->bindParam(':id_servicio', $id_servicio, PDO::PARAM_INT);
+        $consulta->execute();
+        return $consulta->fetch(PDO::FETCH_OBJ);
+    }catch(Exception $e){
+        throw new Exception("Error al obtener detalles del servicio: " . $e->getMessage());
+    }
+}
+
+
 
 }

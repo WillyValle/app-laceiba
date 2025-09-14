@@ -78,7 +78,6 @@ $filtro_empleado = isset($_GET['empleado']) ? $_GET['empleado'] : '';
                 <span>
                     <i class="fas fa-calendar-check"></i> Servicios Programados
                 </span>
-                <span class="badge-count"><?= $totalProgramados ?></span>
             </div>
             
             <?php if (!empty($serviciosProgramados)): ?>
@@ -117,17 +116,19 @@ $filtro_empleado = isset($_GET['empleado']) ? $_GET['empleado'] : '';
                     </tbody>
                 </table>
                 
-                <?php if ($totalProgramados > count($serviciosProgramados)): ?>
-                <button class="btn-ver-mas" onclick="verMasServicios(1, 'programados')">
-                    <i class="fas fa-chevron-down"></i> Ver más (<?= $totalProgramados - count($serviciosProgramados) ?> restantes)
-                </button>
-                <?php endif; ?>
-            <?php else: ?>
-                <div class="no-servicios">
-                    <i class="fas fa-calendar-times fa-2x"></i>
-                    <p>No hay servicios programados</p>
+                
+                <div class="text-center mt-2">
+                    <a href="#" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-list"></i> Ver Listado Completo
+                    </a>
                 </div>
-            <?php endif; ?>
+                
+                <?php else: ?>
+                    <div class="no-servicios">
+                        <i class="fas fa-calendar-times fa-2x"></i>
+                        <p>No hay servicios programados</p>
+                    </div>
+                <?php endif; ?>
         </div>
 
         <!-- Card: Servicios en Ejecución -->
@@ -136,7 +137,7 @@ $filtro_empleado = isset($_GET['empleado']) ? $_GET['empleado'] : '';
                 <span>
                     <i class="fas fa-cog fa-spin"></i> En Ejecución
                 </span>
-                <span class="badge-count"><?= $totalEjecucion ?></span>
+                
             </div>
             
             <?php if (!empty($serviciosEjecucion)): ?>
@@ -174,12 +175,14 @@ $filtro_empleado = isset($_GET['empleado']) ? $_GET['empleado'] : '';
                         <?php endforeach; ?>
                     </tbody>
                 </table>
+
+              
+                <div class="text-center mt-2">
+                    <a href="#" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-list"></i> Ver Listado Completo
+                    </a>
+                </div>
                 
-                <?php if ($totalEjecucion > count($serviciosEjecucion)): ?>
-                <button class="btn-ver-mas" onclick="verMasServicios(2, 'ejecucion')">
-                    <i class="fas fa-chevron-down"></i> Ver más (<?= $totalEjecucion - count($serviciosEjecucion) ?> restantes)
-                </button>
-                <?php endif; ?>
             <?php else: ?>
                 <div class="no-servicios">
                     <i class="fas fa-clock fa-2x"></i>
@@ -194,7 +197,7 @@ $filtro_empleado = isset($_GET['empleado']) ? $_GET['empleado'] : '';
                 <span>
                     <i class="fas fa-check-circle"></i> Finalizados
                 </span>
-                <span class="badge-count"><?= $totalFinalizados ?></span>
+            
             </div>
             
             <?php if (!empty($serviciosFinalizados)): ?>
@@ -204,7 +207,7 @@ $filtro_empleado = isset($_GET['empleado']) ? $_GET['empleado'] : '';
                             <th>Cliente</th>
                             <th>Fecha Finalización</th>
                             <th>Empleados</th>
-                            <th>Estado</th>
+                            <th>Acciones</th>
                         </tr>
                     </thead>
                     <tbody id="tabla-finalizados">
@@ -226,18 +229,22 @@ $filtro_empleado = isset($_GET['empleado']) ? $_GET['empleado'] : '';
                             <td>
                                 <span class="status-badge status-finalizado">
                                     <?= htmlspecialchars($servicio->name_service_status) ?>
-                                </span>
+                                </span><br><br>
+                                <a href="#" 
+                                class="btn btn-info btn-xs">
+                                <i class="fas fa-download"></i> Descargar orden
+                                </a>
                             </td>
                         </tr>
                         <?php endforeach; ?>
                     </tbody>
                 </table>
+                <div class="text-center mt-2">
+                    <a href="#" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-list"></i> Ver Listado Completo
+                    </a>
+                </div>
                 
-                <?php if ($totalFinalizados > count($serviciosFinalizados)): ?>
-                <button class="btn-ver-mas" onclick="verMasServicios(3, 'finalizados')">
-                    <i class="fas fa-chevron-down"></i> Ver más (<?= $totalFinalizados - count($serviciosFinalizados) ?> restantes)
-                </button>
-                <?php endif; ?>
             <?php else: ?>
                 <div class="no-servicios">
                     <i class="fas fa-check-double fa-2x"></i>
@@ -251,7 +258,7 @@ $filtro_empleado = isset($_GET['empleado']) ? $_GET['empleado'] : '';
     <div style="text-align: center; color: #6c757d; font-size: 14px; margin-top: 20px;">
         <p>
             <i class="fas fa-info-circle"></i> 
-            Mostrando hasta 10 servicios por categoría. Use los botones "Ver más" para cargar servicios adicionales.
+            Mostrando hasta 15 servicios por categoría. Use el botón "Ver Listado Completo" para ver todos.
         </p>
         <?php if (!empty($filtros)): ?>
         <p>
@@ -261,13 +268,4 @@ $filtro_empleado = isset($_GET['empleado']) ? $_GET['empleado'] : '';
         <?php endif; ?>
     </div>
 </div>
-
-        </div>
-<script>
-// Inicializar offsets desde PHP
-inicializarOffsets(
-    <?= count($serviciosProgramados) ?>,
-    <?= count($serviciosEjecucion) ?>,
-    <?= count($serviciosFinalizados) ?>
-);
-</script>
+</div>

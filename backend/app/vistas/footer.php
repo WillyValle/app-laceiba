@@ -27,6 +27,7 @@
 <!-- Script para filtro de contactos -->
 <script src="assets/dist/js/filtro-contactos.js"></script>
 <!-- Script para dashboard de gestion de servicios -->
-<script src="assets/dist/js/dashboard-service..js"></script>
+<script src="assets/dist/js/dashboard-service.js"></script>
+
 </body>
 </html>
