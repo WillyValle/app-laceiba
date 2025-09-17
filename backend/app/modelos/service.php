@@ -317,25 +317,39 @@ class Service{
      */
     public function Obtener($id){
         try{
-            $consulta = $this->pdo->prepare("
-            SELECT
-                s.*,
-                c.name_customer,
-                c.address_customer,
-                ss.name_service_status
-            FROM SERVICE s
-            INNER JOIN CUSTOMER c ON s.customer_id_customer = c.id_customer
-            INNER JOIN SERVICE_STATUS ss ON s.service_status_id_service_status = ss.id_service_status
-            WHERE s.id_service = ?
-            ");
-            $consulta->execute(array($id));
-            return $consulta->fetch(PDO::FETCH_OBJ);
-        }catch(Exception $e){
-            die($e->getMessage());
-        }
+        $consulta = $this->pdo->prepare("
+        SELECT
+            s.id_service,
+            s.notes,
+            s.preset_dt_hr,
+            s.start_dt_hr,
+            s.end_dt_hr,
+            s.inspection_problems,
+            s.inspection_location,
+            s.inspection_methods,
+            s.customer_id_customer,
+            s.service_status_id_service_status,
+            c.name_customer,
+            c.address_customer,
+            ss.name_service_status
+        FROM SERVICE s
+        INNER JOIN CUSTOMER c ON s.customer_id_customer = c.id_customer
+        INNER JOIN SERVICE_STATUS ss ON s.service_status_id_service_status = ss.id_service_status
+        WHERE s.id_service = ?
+        ");
+        $consulta->execute(array($id));
+        return $consulta->fetch(PDO::FETCH_OBJ);
+    }catch(Exception $e){
+        die($e->getMessage());
+    }
     }
 
     //Crear Nuevo Servicio
+    /**
+ * Crear nuevo servicio y estructura de directorios
+ * @param array $datos Datos del servicio
+ * @return int ID del servicio creado
+ */
 
     public function CrearServicio($datos){
     try{
@@ -357,12 +371,58 @@ class Service{
         ));
         
         $id_servicio = $this->pdo->lastInsertId();
+        
+        // Crear estructura de directorios para el servicio
+        $this->CrearEstructuraDirectorios($id_servicio);
+        
         $this->pdo->commit();
         
         return $id_servicio;
     }catch(Exception $e){
         $this->pdo->rollback();
         throw new Exception("Error al crear servicio: " . $e->getMessage());
+    }
+}
+
+/**
+ * Crear estructura de directorios para un servicio
+ * @param int $id_servicio ID del servicio
+ * @return bool
+ */
+private function CrearEstructuraDirectorios($id_servicio){
+    try{
+        // Directorio base del servicio
+        $directorio_servicio = "uploads/service" . $id_servicio . "/";
+        $directorio_docs = $directorio_servicio . "docs/";
+        $directorio_img = $directorio_servicio . "img/";
+        
+        // Crear directorio base del servicio
+        if (!is_dir($directorio_servicio)) {
+            if (!mkdir($directorio_servicio, 0777, true)) {
+                throw new Exception("No se pudo crear directorio base del servicio");
+            }
+            chmod($directorio_servicio, 0777);
+        }
+        
+        // Crear subdirectorio para documentos
+        if (!is_dir($directorio_docs)) {
+            if (!mkdir($directorio_docs, 0777, true)) {
+                throw new Exception("No se pudo crear directorio de documentos");
+            }
+            chmod($directorio_docs, 0777);
+        }
+        
+        // Crear subdirectorio para imágenes
+        if (!is_dir($directorio_img)) {
+            if (!mkdir($directorio_img, 0777, true)) {
+                throw new Exception("No se pudo crear directorio de imágenes");
+            }
+            chmod($directorio_img, 0777);
+        }
+        
+        return true;
+    }catch(Exception $e){
+        throw new Exception("Error al crear estructura de directorios: " . $e->getMessage());
     }
 }
 
@@ -765,6 +825,452 @@ public function ObtenerDetalleServicioTecnico($id_servicio){
     }
 }
 
+
+//NUEVOS MÉTODOS PARA FORMULARIO TECNICOS
+/**
+ * Obtener información completa del servicio para el formulario de finalización
+ * Incluye cliente, encargado, asistentes, fecha programada
+ * @param int $id_servicio ID del servicio
+ * @return object|false Información completa del servicio
+ */
+public function ObtenerServicioParaFinalizacion($id_servicio){
+    try{
+        $sql = "
+        SELECT 
+            s.id_service,
+            s.notes,
+            s.preset_dt_hr,
+            s.start_dt_hr,
+            s.end_dt_hr,
+            s.inspection_problems,
+            s.inspection_location,
+            s.inspection_methods,
+            s.customer_id_customer,
+            s.service_status_id_service_status,
+            c.name_customer,
+            c.address_customer,
+            c.whatsapp as customer_whatsapp,
+            c.tel as customer_tel,
+            c.mail as customer_mail,
+            ss.name_service_status,
+            -- Obtener encargado
+            (SELECT CONCAT(e.name_employee, ' ', e.lastname_employee) 
+             FROM SRVIC_EMPLOYEE se 
+             INNER JOIN EMPLOYEE e ON se.employee_id_employee = e.id_employee
+             INNER JOIN ROLE_IN_SERVICE ris ON se.role_in_service_id_role_in_service = ris.id_role_in_service
+             WHERE se.service_id_service = s.id_service 
+             AND LOWER(ris.name_role_in_service) LIKE '%encargado%'
+             LIMIT 1) as encargado_nombre,
+            -- Obtener ID del encargado
+            (SELECT e.id_employee 
+             FROM SRVIC_EMPLOYEE se 
+             INNER JOIN EMPLOYEE e ON se.employee_id_employee = e.id_employee
+             INNER JOIN ROLE_IN_SERVICE ris ON se.role_in_service_id_role_in_service = ris.id_role_in_service
+             WHERE se.service_id_service = s.id_service 
+             AND LOWER(ris.name_role_in_service) LIKE '%encargado%'
+             LIMIT 1) as encargado_id
+        FROM SERVICE s
+        INNER JOIN CUSTOMER c ON s.customer_id_customer = c.id_customer
+        INNER JOIN SERVICE_STATUS ss ON s.service_status_id_service_status = ss.id_service_status
+        WHERE s.id_service = :id_servicio
+        ";
+        
+        $consulta = $this->pdo->prepare($sql);
+        $consulta->bindParam(':id_servicio', $id_servicio, PDO::PARAM_INT);
+        $consulta->execute();
+        $resultado = $consulta->fetch(PDO::FETCH_OBJ);
+        
+        if (!$resultado) {
+            return false;
+        }
+        
+        return $resultado;
+    }catch(Exception $e){
+        throw new Exception("Error al obtener servicio para finalización: " . $e->getMessage());
+    }
+}
+
+/**
+ * Obtener lista de técnicos asistentes asignados al servicio
+ * @param int $id_servicio ID del servicio
+ * @return array Lista de asistentes
+ */
+public function ObtenerAsistentesServicio($id_servicio){
+    try{
+        $sql = "
+        SELECT 
+            e.id_employee,
+            e.name_employee,
+            e.lastname_employee,
+            CONCAT(e.name_employee, ' ', e.lastname_employee) as nombre_completo
+        FROM SRVIC_EMPLOYEE se
+        INNER JOIN EMPLOYEE e ON se.employee_id_employee = e.id_employee
+        INNER JOIN ROLE_IN_SERVICE ris ON se.role_in_service_id_role_in_service = ris.id_role_in_service
+        WHERE se.service_id_service = :id_servicio
+        AND LOWER(ris.name_role_in_service) LIKE '%asistente%'
+        GROUP BY e.id_employee, e.name_employee, e.lastname_employee
+        ORDER BY e.name_employee, e.lastname_employee
+        ";
+        
+        $consulta = $this->pdo->prepare($sql);
+        $consulta->bindParam(':id_servicio', $id_servicio, PDO::PARAM_INT);
+        $consulta->execute();
+        return $consulta->fetchAll(PDO::FETCH_OBJ);
+    }catch(Exception $e){
+        throw new Exception("Error al obtener asistentes del servicio: " . $e->getMessage());
+    }
+}
+
+/**
+ * Obtener todas las categorías de servicio disponibles
+ * @return array Lista de categorías activas
+ */
+public function ObtenerCategoriasServicio(){
+    try{
+        $sql = "SELECT 
+            id_service_category, 
+            name_service_category, 
+            description 
+        FROM SERVICE_CATEGORY 
+        WHERE status = 1 
+        ORDER BY name_service_category";
+        
+        $consulta = $this->pdo->prepare($sql);
+        $consulta->execute();
+        return $consulta->fetchAll(PDO::FETCH_OBJ);
+    }catch(Exception $e){
+        throw new Exception("Error al obtener categorías de servicio: " . $e->getMessage());
+    }
+}
+
+/**
+ * Obtener todos los métodos de aplicación disponibles
+ * @return array Lista de métodos activos
+ */
+public function ObtenerMetodosAplicacion(){
+    try{
+        $sql = "SELECT 
+            id_application_method, 
+            name_application_method, 
+            description 
+        FROM APPLICATION_METHOD 
+        WHERE status = 1 
+        ORDER BY name_application_method";
+        
+        $consulta = $this->pdo->prepare($sql);
+        $consulta->execute();
+        return $consulta->fetchAll(PDO::FETCH_OBJ);
+    }catch(Exception $e){
+        throw new Exception("Error al obtener métodos de aplicación: " . $e->getMessage());
+    }
+}
+
+/**
+ * Finalizar servicio y actualizar toda la información
+ * @param int $id_servicio ID del servicio
+ * @param array $datos_finalizacion Datos del formulario
+ * @return bool Resultado de la operación
+ */
+public function FinalizarServicio($id_servicio, $datos_finalizacion){
+    try{
+        $this->pdo->beginTransaction();
+        
+        // 1. Obtener ID del estado "Finalizado"
+        $sql_estado = "SELECT id_service_status FROM SERVICE_STATUS 
+                      WHERE (LOWER(name_service_status) LIKE '%finalizado%' 
+                      OR LOWER(name_service_status) LIKE '%completado%'
+                      OR LOWER(name_service_status) LIKE '%terminado%')
+                      AND status = 1 LIMIT 1";
+        $consulta_estado = $this->pdo->prepare($sql_estado);
+        $consulta_estado->execute();
+        $estado = $consulta_estado->fetch(PDO::FETCH_OBJ);
+        
+        if (!$estado) {
+            // Si no existe, usar el estado 3 por defecto
+            $id_estado_finalizado = 3;
+        } else {
+            $id_estado_finalizado = $estado->id_service_status;
+        }
+        
+        // 2. Actualizar el servicio con fecha de finalización y estado
+        $sql_service = "UPDATE SERVICE SET 
+                       end_dt_hr = NOW(),
+                       inspection_problems = ?,
+                       inspection_location = ?,
+                       inspection_methods = ?,
+                       notes = ?,
+                       service_status_id_service_status = ?
+                       WHERE id_service = ?";
+        
+        $consulta_service = $this->pdo->prepare($sql_service);
+        $consulta_service->execute(array(
+            $datos_finalizacion['inspection_problems'],
+            $datos_finalizacion['inspection_location'], 
+            $datos_finalizacion['inspection_methods'],
+            $datos_finalizacion['notes'],
+            $id_estado_finalizado,
+            $id_servicio
+        ));
+        
+        // 3. Actualizar técnicos asistentes si se proporcionaron
+        if (isset($datos_finalizacion['asistentes']) && is_array($datos_finalizacion['asistentes'])) {
+            $this->ActualizarAsistentesServicio($id_servicio, $datos_finalizacion['asistentes']);
+        }
+        
+        // 4. Insertar categorías de servicio seleccionadas
+        if (isset($datos_finalizacion['categorias']) && is_array($datos_finalizacion['categorias'])) {
+            $this->InsertarCategoriasServicio($id_servicio, $datos_finalizacion['categorias']);
+        }
+        
+        // 5. Insertar métodos de aplicación seleccionados
+        if (isset($datos_finalizacion['metodos']) && is_array($datos_finalizacion['metodos'])) {
+            $this->InsertarMetodosAplicacion($id_servicio, $datos_finalizacion['metodos']);
+        }
+        
+        $this->pdo->commit();
+        return true;
+    }catch(Exception $e){
+        $this->pdo->rollback();
+        throw new Exception("Error al finalizar servicio: " . $e->getMessage());
+    }
+}
+
+/**
+ * Actualizar lista de técnicos asistentes del servicio
+ * @param int $id_servicio ID del servicio
+ * @param array $nuevos_asistentes Array de IDs de empleados asistentes
+ * @return bool
+ */
+private function ActualizarAsistentesServicio($id_servicio, $nuevos_asistentes){
+    try{
+        // Obtener ID del rol "Asistente"
+        $sql_rol = "SELECT id_role_in_service FROM ROLE_IN_SERVICE 
+                   WHERE LOWER(name_role_in_service) LIKE '%asistente%' 
+                   AND status = 1 LIMIT 1";
+        $consulta_rol = $this->pdo->prepare($sql_rol);
+        $consulta_rol->execute();
+        $rol_asistente = $consulta_rol->fetch(PDO::FETCH_OBJ);
+        
+        if (!$rol_asistente) {
+            throw new Exception("No se encontró el rol 'Asistente'");
+        }
+        
+        // Eliminar asistentes actuales
+        $sql_delete = "DELETE FROM SRVIC_EMPLOYEE 
+                      WHERE service_id_service = ? 
+                      AND role_in_service_id_role_in_service = ?";
+        $consulta_delete = $this->pdo->prepare($sql_delete);
+        $consulta_delete->execute(array($id_servicio, $rol_asistente->id_role_in_service));
+        
+        // Insertar nuevos asistentes
+        if (!empty($nuevos_asistentes)) {
+            $sql_insert = "INSERT INTO SRVIC_EMPLOYEE 
+                          (service_id_service, employee_id_employee, role_in_service_id_role_in_service) 
+                          VALUES (?, ?, ?)";
+            $consulta_insert = $this->pdo->prepare($sql_insert);
+            
+            foreach ($nuevos_asistentes as $id_asistente) {
+                if (!empty($id_asistente)) {
+                    $consulta_insert->execute(array(
+                        $id_servicio, 
+                        $id_asistente, 
+                        $rol_asistente->id_role_in_service
+                    ));
+                }
+            }
+        }
+        
+        return true;
+    }catch(Exception $e){
+        throw new Exception("Error al actualizar asistentes: " . $e->getMessage());
+    }
+}
+
+/**
+ * Insertar categorías de servicio seleccionadas
+ * @param int $id_servicio ID del servicio
+ * @param array $categorias Array de IDs de categorías
+ * @return bool
+ */
+private function InsertarCategoriasServicio($id_servicio, $categorias){
+    try{
+        // Eliminar categorías existentes
+        $sql_delete = "DELETE FROM SRVIC_TYPE WHERE service_id_service = ?";
+        $consulta_delete = $this->pdo->prepare($sql_delete);
+        $consulta_delete->execute(array($id_servicio));
+        
+        // Insertar nuevas categorías
+        if (!empty($categorias)) {
+            $sql_insert = "INSERT INTO SRVIC_TYPE 
+                          (service_id_service, service_category_id_service_category) 
+                          VALUES (?, ?)";
+            $consulta_insert = $this->pdo->prepare($sql_insert);
+            
+            foreach ($categorias as $id_categoria) {
+                if (!empty($id_categoria)) {
+                    $consulta_insert->execute(array($id_servicio, $id_categoria));
+                }
+            }
+        }
+        
+        return true;
+    }catch(Exception $e){
+        throw new Exception("Error al insertar categorías: " . $e->getMessage());
+    }
+}
+
+/**
+ * Insertar métodos de aplicación seleccionados
+ * @param int $id_servicio ID del servicio
+ * @param array $metodos Array de IDs de métodos
+ * @return bool
+ */
+private function InsertarMetodosAplicacion($id_servicio, $metodos){
+    try{
+        // Eliminar métodos existentes
+        $sql_delete = "DELETE FROM SRVIC_SYSTEM WHERE service_id_service = ?";
+        $consulta_delete = $this->pdo->prepare($sql_delete);
+        $consulta_delete->execute(array($id_servicio));
+        
+        // Insertar nuevos métodos
+        if (!empty($metodos)) {
+            $sql_insert = "INSERT INTO SRVIC_SYSTEM 
+                          (service_id_service, application_method_id_application_method) 
+                          VALUES (?, ?)";
+            $consulta_insert = $this->pdo->prepare($sql_insert);
+            
+            foreach ($metodos as $id_metodo) {
+                if (!empty($id_metodo)) {
+                    $consulta_insert->execute(array($id_servicio, $id_metodo));
+                }
+            }
+        }
+        
+        return true;
+    }catch(Exception $e){
+        throw new Exception("Error al insertar métodos de aplicación: " . $e->getMessage());
+    }
+}
+
+/**
+ * Guardar múltiples imágenes del servicio
+ * @param int $id_servicio ID del servicio
+ * @param array $rutas_imagenes Array de rutas de imágenes guardadas
+ * @return bool
+ */
+public function GuardarImagenesServicio($id_servicio, $rutas_imagenes){
+    try{
+        if (empty($rutas_imagenes)) {
+            return true; // No hay imágenes que guardar
+        }
+        
+        $sql = "INSERT INTO SERVICE_FILE 
+               (service_id_service, path_file, file_type) 
+               VALUES (?, ?, 'IMG')";
+        
+        $consulta = $this->pdo->prepare($sql);
+        
+        foreach ($rutas_imagenes as $ruta) {
+            $consulta->execute(array($id_servicio, $ruta));
+        }
+        
+        return true;
+    }catch(Exception $e){
+        throw new Exception("Error al guardar imágenes: " . $e->getMessage());
+    }
+}
+
+/**
+ * Obtener servicios en estado "Iniciado/En Ejecución" asignados a un empleado como encargado
+ * Estos son servicios que ya fueron iniciados pero aún no finalizados
+ * @param int $id_empleado ID del empleado encargado
+ * @return array Servicios en ejecución del empleado
+ */
+public function ObtenerServiciosIniciadosEmpleado($id_empleado){
+    try{
+        $sql = "
+        SELECT DISTINCT
+            s.id_service,
+            s.notes,
+            s.preset_dt_hr,
+            s.start_dt_hr,
+            s.end_dt_hr,
+            s.customer_id_customer,
+            c.name_customer,
+            c.address_customer,
+            c.whatsapp as customer_whatsapp,
+            c.tel as customer_tel,
+            s.service_status_id_service_status,
+            ss.name_service_status,
+            CONCAT(e_enc.name_employee, ' ', e_enc.lastname_employee) as empleado_encargado,
+            -- Calcular tiempo transcurrido desde el inicio
+            TIMESTAMPDIFF(MINUTE, s.start_dt_hr, NOW()) as minutos_transcurridos
+        FROM SERVICE s
+        INNER JOIN CUSTOMER c ON s.customer_id_customer = c.id_customer
+        INNER JOIN SERVICE_STATUS ss ON s.service_status_id_service_status = ss.id_service_status
+        INNER JOIN SRVIC_EMPLOYEE se ON s.id_service = se.service_id_service
+        INNER JOIN EMPLOYEE e_enc ON se.employee_id_employee = e_enc.id_employee
+        INNER JOIN ROLE_IN_SERVICE ris ON se.role_in_service_id_role_in_service = ris.id_role_in_service
+        WHERE se.employee_id_employee = :id_empleado
+        AND LOWER(ris.name_role_in_service) LIKE '%encargado%'
+        AND s.service_status_id_service_status = 2
+        AND s.start_dt_hr IS NOT NULL
+        AND s.end_dt_hr IS NULL
+        ORDER BY s.start_dt_hr DESC
+        ";
+        
+        $consulta = $this->pdo->prepare($sql);
+        $consulta->bindParam(':id_empleado', $id_empleado, PDO::PARAM_INT);
+        $consulta->execute();
+        return $consulta->fetchAll(PDO::FETCH_OBJ);
+    }catch(Exception $e){
+        throw new Exception("Error al obtener servicios iniciados del empleado: " . $e->getMessage());
+    }
+}
+
+/**
+ * Contar servicios por estado para un empleado específico
+ * Útil para mostrar estadísticas en el dashboard del técnico
+ * @param int $id_empleado ID del empleado
+ * @param int $estado_servicio ID del estado a contar (1=Programado, 2=Iniciado, 3=Finalizado)
+ * @return int Cantidad de servicios
+ */
+public function ContarServiciosEmpleadoPorEstado($id_empleado, $estado_servicio){
+    try{
+        $sql = "
+        SELECT COUNT(DISTINCT s.id_service) as total
+        FROM SERVICE s
+        INNER JOIN SRVIC_EMPLOYEE se ON s.id_service = se.service_id_service
+        INNER JOIN ROLE_IN_SERVICE ris ON se.role_in_service_id_role_in_service = ris.id_role_in_service
+        WHERE se.employee_id_employee = :id_empleado
+        AND LOWER(ris.name_role_in_service) LIKE '%encargado%'
+        AND s.service_status_id_service_status = :estado_servicio
+        ";
+        
+        // Agregar filtros adicionales según el estado
+        switch ($estado_servicio) {
+            case 1: // Programados - solo futuros
+                $sql .= " AND s.preset_dt_hr >= CURDATE() ";
+                break;
+            case 2: // Iniciados - que no estén finalizados
+                $sql .= " AND s.start_dt_hr IS NOT NULL AND s.end_dt_hr IS NULL ";
+                break;
+            case 3: // Finalizados - del mes actual
+                $sql .= " AND s.end_dt_hr >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) ";
+                break;
+        }
+        
+        $consulta = $this->pdo->prepare($sql);
+        $consulta->bindParam(':id_empleado', $id_empleado, PDO::PARAM_INT);
+        $consulta->bindParam(':estado_servicio', $estado_servicio, PDO::PARAM_INT);
+        $consulta->execute();
+        
+        $resultado = $consulta->fetch(PDO::FETCH_OBJ);
+        return (int)$resultado->total;
+    }catch(Exception $e){
+        return 0; // En caso de error, retornar 0
+    }
+}
 
 
 }

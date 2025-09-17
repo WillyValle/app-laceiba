@@ -24,10 +24,6 @@
 <script src="assets/dist/js/inline-edit.js"></script>
 <!-- Theme Switcher Script -->
 <script src="assets/dist/js/theme-switcher.js"></script>
-<!-- Script para filtro de contactos -->
-<script src="assets/dist/js/filtro-contactos.js"></script>
-<!-- Script para dashboard de gestion de servicios -->
-<script src="assets/dist/js/dashboard-service.js"></script>
 
 </body>
 </html>

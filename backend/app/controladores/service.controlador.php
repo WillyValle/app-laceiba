@@ -13,32 +13,32 @@ class ServiceControlador{
      * Muestra el dashboard con servicios separados por estado
      */
     public function Inicio(){
-        // Obtener los estados de servicio disponibles
-        $estados = $this->modelo->ListarEstadosServicio();
-        
-        // Obtener datos para filtros
-        $clientes = $this->modelo->ListarClientes();
-        $empleados = $this->modelo->ListarEmpleados();
-        
-        // Procesar filtros si existen
-        $filtros = $this->procesarFiltros();
-        
-        // Si hay filtros aplicados, usar el método con filtros
-        if (!empty($filtros)) {
-            $serviciosProgramados = $this->modelo->ObtenerConFiltros(array_merge($filtros, ['estado' => 1]), 15);
-            $serviciosEjecucion = $this->modelo->ObtenerConFiltros(array_merge($filtros, ['estado' => 2]), 15);
-            $serviciosFinalizados = $this->modelo->ObtenerConFiltros(array_merge($filtros, ['estado' => 3]), 15);
-        } else {
-            // Sin filtros, obtener por estado normal
-            $serviciosProgramados = $this->modelo->ObtenerPorEstado(1, 15); // Estado 1: Programado
-            $serviciosEjecucion = $this->modelo->ObtenerPorEstado(2, 15);   // Estado 2: En ejecución
-            $serviciosFinalizados = $this->modelo->ObtenerPorEstado(3, 15); // Estado 3: Finalizado
-        }
-        
-        require_once "app/vistas/header.php";
-        require_once "app/vistas/service/servicemanagement.php";
-        require_once "app/vistas/footer.php";
+    // Obtener los estados de servicio disponibles
+    $estados = $this->modelo->ListarEstadosServicio();
+    
+    // Obtener datos para filtros
+    $clientes = $this->modelo->ListarClientes();
+    $empleados = $this->modelo->ListarEmpleados();
+    
+    // Procesar filtros si existen
+    $filtros = $this->procesarFiltros();
+    
+    // Si hay filtros aplicados, usar el método con filtros SIN LÍMITE
+    if (!empty($filtros)) {
+        $serviciosProgramados = $this->modelo->ObtenerConFiltros(array_merge($filtros, ['estado' => 1])); // Sin límite
+        $serviciosEjecucion = $this->modelo->ObtenerConFiltros(array_merge($filtros, ['estado' => 2])); // Sin límite
+        $serviciosFinalizados = $this->modelo->ObtenerConFiltros(array_merge($filtros, ['estado' => 3])); // Sin límite
+    } else {
+        // Sin filtros, obtener por estado normal SIN LÍMITE
+        $serviciosProgramados = $this->modelo->ObtenerPorEstado(1); // Estado 1: Programado - Sin límite
+        $serviciosEjecucion = $this->modelo->ObtenerPorEstado(2);   // Estado 2: En ejecución - Sin límite
+        $serviciosFinalizados = $this->modelo->ObtenerPorEstado(3); // Estado 3: Finalizado - Sin límite
     }
+    
+    require_once "app/vistas/header.php";
+    require_once "app/vistas/service/servicemanagement.php";
+    require_once "app/vistas/footer.php";
+}
 
     /**
      * Método para obtener más servicios de un estado específico vía AJAX
@@ -206,20 +206,6 @@ private function ProcesarFormularioServicio(){
             $errores[] = "Debe seleccionar un estado de servicio";
         }
         
-        // Validar archivo PDF si se subió
-        $archivo_subido = false;
-        $ruta_archivo = '';
-        
-        if (isset($_FILES['archivo_pdf']) && $_FILES['archivo_pdf']['error'] !== UPLOAD_ERR_NO_FILE) {
-            $validacion_archivo = $this->ValidarArchivoPDF($_FILES['archivo_pdf']);
-            if (!$validacion_archivo['success']) {
-                $errores = array_merge($errores, $validacion_archivo['errores']);
-            } else {
-                $archivo_subido = true;
-                $ruta_archivo = $validacion_archivo['ruta'];
-            }
-        }
-        
         // Si hay errores de validación, retornar
         if (!empty($errores)) {
             $resultado['errores'] = $errores;
@@ -264,7 +250,7 @@ private function ProcesarFormularioServicio(){
             'service_status_id_service_status' => (int)$_POST['service_status_id_service_status']
         ];
         
-        // Crear el servicio
+        // Crear el servicio (esto ya crea la estructura de directorios)
         $id_servicio = $this->modelo->CrearServicio($datos_servicio);
         
         if (!$id_servicio) {
@@ -278,13 +264,22 @@ private function ProcesarFormularioServicio(){
             $empleados_asistentes
         );
         
-        // Guardar archivo si se subió
-        if ($archivo_subido) {
-            $this->modelo->GuardarArchivoServicio($id_servicio, $ruta_archivo, 'PDF');
+        // Procesar archivo PDF si se subió (ahora con el ID del servicio)
+        if (isset($_FILES['archivo_pdf']) && $_FILES['archivo_pdf']['error'] !== UPLOAD_ERR_NO_FILE) {
+            $validacion_archivo = $this->ValidarArchivoPDF($_FILES['archivo_pdf'], $id_servicio);
+            if (!$validacion_archivo['success']) {
+                // Si falla la subida del PDF, no fallar todo el proceso
+                $resultado['mensaje'] = "Servicio creado exitosamente (ID: " . $id_servicio . "), pero hubo un problema con el archivo PDF: " . implode(', ', $validacion_archivo['errores']);
+            } else {
+                // Guardar referencia del archivo en base de datos
+                $this->modelo->GuardarArchivoServicio($id_servicio, $validacion_archivo['ruta'], 'PDF');
+            }
         }
         
         $resultado['success'] = true;
-        $resultado['mensaje'] = "Servicio creado exitosamente. ID: " . $id_servicio;
+        if (empty($resultado['mensaje'])) {
+            $resultado['mensaje'] = "Servicio creado exitosamente. ID: " . $id_servicio;
+        }
         
     } catch (Exception $e) {
         $errores[] = "Error al procesar el formulario: " . $e->getMessage();
@@ -295,11 +290,12 @@ private function ProcesarFormularioServicio(){
 }
 
 /**
- * Validar y subir archivo PDF
+ * Validar y subir archivo PDF (usado al programar servicio)
  * @param array $archivo Datos del archivo de $_FILES
+ * @param int $id_servicio ID del servicio para determinar el directorio
  * @return array Resultado de la validación
  */
-private function ValidarArchivoPDF($archivo){
+private function ValidarArchivoPDF($archivo, $id_servicio = null){
     $errores = [];
     $resultado = ['success' => false, 'errores' => [], 'ruta' => ''];
     
@@ -349,18 +345,33 @@ private function ValidarArchivoPDF($archivo){
             return $resultado;
         }
         
-        // Crear directorio si no existe
-        $directorio_destino = "uploads/servicios/";
+        // Determinar directorio destino
+        if ($id_servicio) {
+            // Si ya se creó el servicio, usar su directorio específico
+            $directorio_destino = "uploads/service" . $id_servicio . "/docs/";
+        } else {
+            // Si aún no se crea el servicio, usar directorio temporal
+            $directorio_destino = "uploads/temp/docs/";
+            if (!is_dir($directorio_destino)) {
+                mkdir($directorio_destino, 0777, true);
+                chmod($directorio_destino, 0777);
+            }
+        }
+        
+        // Verificar que el directorio existe
         if (!is_dir($directorio_destino)) {
-            mkdir($directorio_destino, 0755, true);
+            $errores[] = "Directorio de destino no existe: " . $directorio_destino;
+            $resultado['errores'] = $errores;
+            return $resultado;
         }
         
         // Generar nombre único para el archivo
-        $nombre_archivo = uniqid('servicio_') . '_' . date('Y-m-d_H-i-s') . '.pdf';
+        $nombre_archivo = uniqid('doc_') . '_' . date('Y-m-d_H-i-s') . '.pdf';
         $ruta_completa = $directorio_destino . $nombre_archivo;
         
         // Mover el archivo
         if (move_uploaded_file($archivo['tmp_name'], $ruta_completa)) {
+            chmod($ruta_completa, 0666);
             $resultado['success'] = true;
             $resultado['ruta'] = $ruta_completa;
         } else {
@@ -392,14 +403,23 @@ public function VistaTecnico(){
             // Si no hay empleado especificado, mostrar error o redirigir
             $errores = ["No se ha especificado un empleado válido"];
             $servicios_programados = [];
+            $servicios_iniciados = [];
         } else {
             // Obtener servicios programados asignados al empleado como encargado
             $servicios_programados = $this->modelo->ObtenerServiciosProgramadosEmpleado($id_empleado);
+            
+            // ** NUEVO: Obtener servicios iniciados asignados al empleado **
+            $servicios_iniciados = $this->modelo->ObtenerServiciosIniciadosEmpleado($id_empleado);
         }
         
         // Variables para la vista
-        $titulo_pagina = "Mis Servicios Programados";
+        $titulo_pagina = "Panel de Servicios - Técnico";
         $empleado_actual = $id_empleado;
+        
+        // ** NUEVO: Obtener estadísticas para el dashboard **
+        $total_programados = $this->modelo->ContarServiciosEmpleadoPorEstado($id_empleado, 1);
+        $total_iniciados = $this->modelo->ContarServiciosEmpleadoPorEstado($id_empleado, 2);
+        $total_finalizados_mes = $this->modelo->ContarServiciosEmpleadoPorEstado($id_empleado, 3);
         
         require_once "app/vistas/header.php";
         require_once "app/vistas/service/serviceTechView.php";
@@ -408,6 +428,7 @@ public function VistaTecnico(){
     } catch (Exception $e) {
         $errores = ["Error al cargar los servicios: " . $e->getMessage()];
         $servicios_programados = [];
+        $servicios_iniciados = [];
         
         require_once "app/vistas/header.php";
         require_once "app/vistas/service/serviceTechView.php";
@@ -472,126 +493,94 @@ public function CompletarServicio(){
             throw new Exception("ID de servicio no válido");
         }
         
-        // Obtener detalles del servicio
-        $servicio = $this->modelo->ObtenerDetalleServicioTecnico($id_servicio);
+        // Obtener información completa del servicio
+        $servicio = $this->modelo->ObtenerServicioParaFinalizacion($id_servicio);
         
         if (!$servicio) {
             throw new Exception("Servicio no encontrado");
         }
         
-        // Validar que el empleado tenga permisos
+        // Debug: verificar qué propiedades tiene el objeto servicio
+        // Puedes comentar esta línea después de verificar
+        // error_log("Propiedades del servicio: " . print_r($servicio, true));
+        
+        // Validar que el empleado tenga permisos (si se especificó)
         if ($id_empleado > 0 && !$this->modelo->ValidarEncargadoServicio($id_servicio, $id_empleado)) {
-            throw new Exception("No tiene permisos para acceder a este servicio");
+            throw new Exception("No tiene permisos para completar este servicio");
         }
+        
+        // Validar que el servicio esté en estado "En ejecución" (estado 2)
+        // Usar una verificación más segura
+        $estado_servicio = isset($servicio->service_status_id_service_status) ? 
+                          $servicio->service_status_id_service_status : 0;
+        
+        if ($estado_servicio != 2) {
+            throw new Exception("El servicio no está en estado de ejecución. Estado actual: " . 
+                              (isset($servicio->name_service_status) ? $servicio->name_service_status : 'Desconocido'));
+        }
+        
+        // Obtener datos necesarios para el formulario
+        $asistentes_actuales = $this->modelo->ObtenerAsistentesServicio($id_servicio);
+        $empleados_disponibles = $this->modelo->ObtenerEmpleadosDisponibles();
+        $categorias_servicio = $this->modelo->ObtenerCategoriasServicio();
+        $metodos_aplicacion = $this->modelo->ObtenerMetodosAplicacion();
         
         // Variables para la vista
         $titulo_pagina = "Completar Servicio - " . $servicio->name_customer;
         $empleado_actual = $id_empleado;
         
-        // Si se envió el formulario, procesarlo
+        // Procesar formulario si se envió
         $mensaje_exito = '';
         $errores = [];
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $resultado = $this->ProcesarFormularioCompletar($id_servicio);
+            $resultado = $this->ProcesarFormularioFinalizacion($id_servicio);
             if ($resultado['success']) {
                 $mensaje_exito = $resultado['mensaje'];
+                // Redirigir a vista de técnico después del éxito
+                header("location: ?c=service&a=VistaTecnico&empleado=" . $id_empleado . "&success=" . urlencode($resultado['mensaje']));
+                exit;
             } else {
                 $errores = $resultado['errores'];
             }
         }
         
         require_once "app/vistas/header.php";
-        require_once "app/vistas/service/serviceComplete.php"; // Vista que crearías después
+        require_once "app/vistas/service/serviceTechForm.php";
         require_once "app/vistas/footer.php";
         
     } catch (Exception $e) {
         $errores = [$e->getMessage()];
         $empleado_actual = isset($_GET['empleado']) ? (int)$_GET['empleado'] : 0;
         
-        // Redirigir de vuelta a vista técnico con error
-        $mensaje_error = urlencode($e->getMessage());
-        header("location: ?c=service&a=VistaTecnico&empleado=" . $empleado_actual . "&error=" . $mensaje_error);
+        // En lugar de redirigir, mostrar el error en la misma página
+        // para evitar problemas con headers
+        $titulo_pagina = "Error al cargar servicio";
+        require_once "app/vistas/header.php";
+        ?>
+        <div class="content-header">
+            <div class="container-fluid">
+                <div class="row mb-2">
+                    <div class="col-sm-12">
+                        <h1 class="m-0">Error al cargar servicio</h1>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <section class="content">
+            <div class="container-fluid">
+                <div class="alert alert-danger">
+                    <h4><i class="icon fas fa-ban"></i> Error!</h4>
+                    <?= htmlspecialchars($e->getMessage()) ?>
+                </div>
+                <a href="?c=service&a=VistaTecnico&empleado=<?= $empleado_actual ?>" class="btn btn-primary">
+                    <i class="fas fa-arrow-left"></i> Volver a Mis Servicios
+                </a>
+            </div>
+        </section>
+        <?php
+        require_once "app/vistas/footer.php";
     }
-}
-
-/**
- * Procesar formulario de completar servicio
- * Actualiza los campos de inspección y finaliza el servicio
- * @param int $id_servicio ID del servicio a completar
- * @return array Resultado del procesamiento
- */
-private function ProcesarFormularioCompletar($id_servicio){
-    $resultado = ['success' => false, 'errores' => [], 'mensaje' => ''];
-    
-    try {
-        $this->pdo->beginTransaction();
-        
-        // Validar y procesar datos del formulario
-        $inspection_problems = isset($_POST['inspection_problems']) ? trim($_POST['inspection_problems']) : '';
-        $inspection_location = isset($_POST['inspection_location']) ? trim($_POST['inspection_location']) : '';
-        $inspection_methods = isset($_POST['inspection_methods']) ? trim($_POST['inspection_methods']) : '';
-        $notes_adicionales = isset($_POST['notes_adicionales']) ? trim($_POST['notes_adicionales']) : '';
-        
-        // Obtener notas actuales si existen
-        $servicio_actual = $this->modelo->Obtener($id_servicio);
-        $notas_finales = $servicio_actual->notes;
-        
-        if (!empty($notes_adicionales)) {
-            $notas_finales .= (!empty($notas_finales) ? "\n\n" : "") . "Notas de finalización: " . $notes_adicionales;
-        }
-        
-        // Obtener ID del estado "Finalizado" o "Completado"
-        $sql_estado = "SELECT id_service_status FROM SERVICE_STATUS 
-                      WHERE (LOWER(name_service_status) LIKE '%finalizado%' 
-                      OR LOWER(name_service_status) LIKE '%completado%'
-                      OR LOWER(name_service_status) LIKE '%terminado%')
-                      AND status = 1 LIMIT 1";
-        $consulta_estado = $this->pdo->prepare($sql_estado);
-        $consulta_estado->execute();
-        $estado = $consulta_estado->fetch(PDO::FETCH_OBJ);
-        
-        if (!$estado) {
-            // Si no existe, usar el estado 3 por defecto (según tu estructura actual)
-            $id_estado_finalizado = 3;
-        } else {
-            $id_estado_finalizado = $estado->id_service_status;
-        }
-        
-        // Actualizar el servicio con toda la información
-        $sql = "UPDATE SERVICE SET 
-                end_dt_hr = NOW(),
-                inspection_problems = ?,
-                inspection_location = ?,
-                inspection_methods = ?,
-                notes = ?,
-                service_status_id_service_status = ?
-                WHERE id_service = ?";
-        
-        $consulta = $this->pdo->prepare($sql);
-        $consulta->execute(array(
-            $inspection_problems,
-            $inspection_location,
-            $inspection_methods,
-            $notas_finales,
-            $id_estado_finalizado,
-            $id_servicio
-        ));
-        
-        if ($consulta->rowCount() > 0) {
-            $this->pdo->commit();
-            $resultado['success'] = true;
-            $resultado['mensaje'] = "Servicio completado exitosamente";
-        } else {
-            throw new Exception("No se pudo actualizar el servicio");
-        }
-        
-    } catch (Exception $e) {
-        $this->pdo->rollback();
-        $resultado['errores'][] = "Error al completar servicio: " . $e->getMessage();
-    }
-    
-    return $resultado;
 }
 
 /**
@@ -654,5 +643,290 @@ public function ObtenerHistorialTecnico(){
         require_once "app/vistas/footer.php";
     }
 }
+
+//NUEVOS METODOS PARA FORMULARIO TECNICOS
+
+/**
+ * Procesar formulario de finalización de servicio
+ * Guarda toda la información y finaliza el servicio
+ * @param int $id_servicio ID del servicio a finalizar
+ * @return array Resultado del procesamiento
+ */
+private function ProcesarFormularioFinalizacion($id_servicio){
+    $resultado = ['success' => false, 'errores' => [], 'mensaje' => ''];
+    
+    try {
+        // Validar campos requeridos mínimos
+        $inspection_problems = isset($_POST['inspection_problems']) ? trim($_POST['inspection_problems']) : '';
+        $inspection_location = isset($_POST['inspection_location']) ? trim($_POST['inspection_location']) : '';
+        $inspection_methods = isset($_POST['inspection_methods']) ? trim($_POST['inspection_methods']) : '';
+        $notes_finalizacion = isset($_POST['notes_finalizacion']) ? trim($_POST['notes_finalizacion']) : '';
+        
+        // Obtener notas actuales del servicio de forma segura
+        $servicio_actual = $this->modelo->ObtenerServicioParaFinalizacion($id_servicio);
+        $notas_finales = '';
+        
+        // Verificar si existen notas actuales
+        if ($servicio_actual && isset($servicio_actual->notes) && !empty($servicio_actual->notes)) {
+            $notas_finales = $servicio_actual->notes;
+        }
+        
+        // Agregar notas de finalización si existen
+        if (!empty($notes_finalizacion)) {
+            $notas_finales .= (!empty($notas_finales) ? "\n\n" : "") . "Notas de finalización: " . $notes_finalizacion;
+        }
+        
+        // Procesar imágenes si se subieron
+        $rutas_imagenes = [];
+        if (isset($_FILES['imagenes_servicio']) && !empty($_FILES['imagenes_servicio']['name'][0])) {
+            $resultado_imagenes = $this->ProcesarImagenesServicio($id_servicio, $_FILES['imagenes_servicio']);
+            if (!$resultado_imagenes['success']) {
+                $resultado['errores'] = array_merge($resultado['errores'], $resultado_imagenes['errores']);
+                return $resultado;
+            }
+            $rutas_imagenes = $resultado_imagenes['rutas'];
+        }
+        
+        // Validar formulario
+        $errores_validacion = $this->ValidarFormularioFinalizacion($_POST);
+        if (!empty($errores_validacion)) {
+            $resultado['errores'] = $errores_validacion;
+            return $resultado;
+        }
+        
+        // Preparar datos para finalización
+        $datos_finalizacion = [
+            'inspection_problems' => $inspection_problems,
+            'inspection_location' => $inspection_location,
+            'inspection_methods' => $inspection_methods,
+            'notes' => $notas_finales,
+            'asistentes' => isset($_POST['asistentes']) ? $_POST['asistentes'] : [],
+            'categorias' => isset($_POST['categorias_servicio']) ? $_POST['categorias_servicio'] : [],
+            'metodos' => isset($_POST['metodos_aplicacion']) ? $_POST['metodos_aplicacion'] : []
+        ];
+        
+        // Finalizar servicio en base de datos
+        $finalizado = $this->modelo->FinalizarServicio($id_servicio, $datos_finalizacion);
+        
+        if ($finalizado) {
+            // Guardar imágenes si se procesaron correctamente
+            if (!empty($rutas_imagenes)) {
+                $this->modelo->GuardarImagenesServicio($id_servicio, $rutas_imagenes);
+            }
+            
+            $resultado['success'] = true;
+            $resultado['mensaje'] = "Servicio finalizado exitosamente. ID: " . $id_servicio;
+        } else {
+            throw new Exception("No se pudo finalizar el servicio");
+        }
+        
+    } catch (Exception $e) {
+        $resultado['errores'][] = "Error al finalizar servicio: " . $e->getMessage();
+    }
+    
+    return $resultado;
+}
+
+/**
+ * Procesar y guardar imágenes del servicio
+ * @param int $id_servicio ID del servicio
+ * @param array $archivos_imagenes Array de archivos de $_FILES
+ * @return array Resultado del procesamiento con rutas de imágenes
+ */
+private function ProcesarImagenesServicio($id_servicio, $archivos_imagenes){
+    $resultado = ['success' => false, 'errores' => [], 'rutas' => []];
+    
+    try {
+        // El directorio ya debe existir desde la creación del servicio
+        $directorio_imagenes = "uploads/service" . $id_servicio . "/img/";
+        
+        // Verificar que el directorio existe
+        if (!is_dir($directorio_imagenes)) {
+            throw new Exception("El directorio de imágenes no existe. Contacte al administrador.");
+        }
+        
+        // Verificar permisos de escritura
+        if (!is_writable($directorio_imagenes)) {
+            throw new Exception("El directorio de imágenes no tiene permisos de escritura.");
+        }
+        
+        // Tipos de imagen permitidos
+        $tipos_permitidos = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+        $extensiones_permitidas = ['jpg', 'jpeg', 'png', 'gif'];
+        
+        // Tamaño máximo por imagen (10MB)
+        $tamaño_maximo = 10 * 1024 * 1024;
+        
+        $rutas_guardadas = [];
+        $total_archivos = count($archivos_imagenes['name']);
+        
+        // Procesar cada imagen
+        for ($i = 0; $i < $total_archivos; $i++) {
+            // Verificar si se subió archivo
+            if ($archivos_imagenes['error'][$i] === UPLOAD_ERR_NO_FILE) {
+                continue; // Saltar archivos vacíos
+            }
+            
+            // Verificar errores de subida
+            if ($archivos_imagenes['error'][$i] !== UPLOAD_ERR_OK) {
+                switch ($archivos_imagenes['error'][$i]) {
+                    case UPLOAD_ERR_INI_SIZE:
+                    case UPLOAD_ERR_FORM_SIZE:
+                        $resultado['errores'][] = "Imagen " . ($i + 1) . " es demasiado grande. Límite: " . ini_get('upload_max_filesize');
+                        break;
+                    case UPLOAD_ERR_PARTIAL:
+                        $resultado['errores'][] = "Imagen " . ($i + 1) . " se subió parcialmente";
+                        break;
+                    default:
+                        $resultado['errores'][] = "Error al subir imagen " . ($i + 1);
+                        break;
+                }
+                continue;
+            }
+            
+            // Verificar que el archivo temporal existe
+            if (!file_exists($archivos_imagenes['tmp_name'][$i])) {
+                $resultado['errores'][] = "Archivo temporal no encontrado para imagen " . ($i + 1);
+                continue;
+            }
+            
+            // Verificar tipo de archivo
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+            $tipo_mime = finfo_file($finfo, $archivos_imagenes['tmp_name'][$i]);
+            finfo_close($finfo);
+            
+            if (!in_array($tipo_mime, $tipos_permitidos)) {
+                $resultado['errores'][] = "Imagen " . ($i + 1) . " no es un tipo válido. Solo JPG, PNG y GIF";
+                continue;
+            }
+            
+            // Verificar extensión
+            $extension = strtolower(pathinfo($archivos_imagenes['name'][$i], PATHINFO_EXTENSION));
+            if (!in_array($extension, $extensiones_permitidas)) {
+                $resultado['errores'][] = "Imagen " . ($i + 1) . " no tiene una extensión válida";
+                continue;
+            }
+            
+            // Verificar tamaño
+            if ($archivos_imagenes['size'][$i] > $tamaño_maximo) {
+                $tamaño_mb = round($tamaño_maximo / (1024 * 1024), 1);
+                $resultado['errores'][] = "Imagen " . ($i + 1) . " supera el tamaño máximo de {$tamaño_mb}MB";
+                continue;
+            }
+            
+            // Generar nombre único para la imagen
+            $nombre_archivo = uniqid('img_') . '_' . date('Y-m-d_H-i-s') . '_' . $i . '.' . $extension;
+            $ruta_completa = $directorio_imagenes . $nombre_archivo;
+            
+            // Mover archivo
+            if (move_uploaded_file($archivos_imagenes['tmp_name'][$i], $ruta_completa)) {
+                chmod($ruta_completa, 0666);
+                $rutas_guardadas[] = $ruta_completa;
+            } else {
+                $resultado['errores'][] = "Error al guardar imagen " . ($i + 1);
+            }
+        }
+        
+        // Marcar como éxito si se procesó al menos una imagen o no hubo errores
+        if (!empty($rutas_guardadas) || empty($resultado['errores'])) {
+            $resultado['success'] = true;
+            $resultado['rutas'] = $rutas_guardadas;
+        }
+        
+        // Información de debug
+        if (!empty($rutas_guardadas)) {
+            $resultado['mensaje'] = "Se guardaron " . count($rutas_guardadas) . " imagen(es) en: " . $directorio_imagenes;
+        }
+        
+    } catch (Exception $e) {
+        $resultado['errores'][] = "Error al procesar imágenes: " . $e->getMessage();
+    }
+    
+    return $resultado;
+}
+
+/**
+ * Método auxiliar para validar formulario de finalización
+ * @param array $datos Datos del formulario POST
+ * @return array Array de errores encontrados
+ */
+private function ValidarFormularioFinalizacion($datos){
+    $errores = [];
+    
+    // Validar categorías (al menos una)
+    if (!isset($datos['categorias_servicio']) || empty($datos['categorias_servicio'])) {
+        $errores[] = "Debe seleccionar al menos una categoría de servicio";
+    }
+    
+    // Validar métodos (al menos uno)
+    if (!isset($datos['metodos_aplicacion']) || empty($datos['metodos_aplicacion'])) {
+        $errores[] = "Debe seleccionar al menos un método de aplicación";
+    }
+    
+    // Validar asistentes (verificar que existan en base de datos si se seleccionaron)
+    if (isset($datos['asistentes']) && is_array($datos['asistentes'])) {
+        foreach ($datos['asistentes'] as $id_asistente) {
+            if (!empty($id_asistente) && !$this->modelo->ValidarEmpleado($id_asistente)) {
+                $errores[] = "Uno de los asistentes seleccionados no es válido";
+                break;
+            }
+        }
+    }
+    
+    // Validar que se haya llenado al menos algún campo de inspección O notas de finalización
+    $tiene_contenido = false;
+    if (!empty($datos['inspection_problems']) || 
+        !empty($datos['inspection_location']) || 
+        !empty($datos['inspection_methods']) ||
+        !empty($datos['notes_finalizacion'])) {
+        $tiene_contenido = true;
+    }
+    
+    if (!$tiene_contenido) {
+        $errores[] = "Debe completar al menos un campo de información (inspección o notas de finalización)";
+    }
+    
+    return $errores;
+}
+
+/**
+ * Método auxiliar para continuar un servicio iniciado
+ * Redirige directamente al formulario de finalización
+ */
+public function ContinuarServicio(){
+    try {
+        $id_servicio = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+        $id_empleado = isset($_GET['empleado']) ? (int)$_GET['empleado'] : 0;
+        
+        if ($id_servicio <= 0) {
+            throw new Exception("ID de servicio no válido");
+        }
+        
+        if ($id_empleado <= 0) {
+            throw new Exception("ID de empleado no válido");
+        }
+        
+        // Validar que el empleado tenga permisos para continuar este servicio
+        if (!$this->modelo->ValidarEncargadoServicio($id_servicio, $id_empleado)) {
+            throw new Exception("No tiene permisos para continuar este servicio");
+        }
+        
+        // Validar que el servicio esté en estado "Iniciado" (estado 2)
+        $servicio = $this->modelo->ObtenerServicioParaFinalizacion($id_servicio);
+        if (!$servicio || $servicio->service_status_id_service_status != 2) {
+            throw new Exception("El servicio no está en estado de ejecución");
+        }
+        
+        // Redirigir al formulario de completar servicio
+        header("location: ?c=service&a=CompletarServicio&id=" . $id_servicio . "&empleado=" . $id_empleado);
+        
+    } catch (Exception $e) {
+        // En caso de error, redirigir de vuelta a la vista de técnico con mensaje de error
+        $mensaje_error = urlencode($e->getMessage());
+        $empleado = isset($_GET['empleado']) ? (int)$_GET['empleado'] : 0;
+        header("location: ?c=service&a=VistaTecnico&empleado=" . $empleado . "&error=" . $mensaje_error);
+    }
+}
+
 
 }

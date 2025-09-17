@@ -17,10 +17,6 @@
   <link rel="stylesheet" href="assets/dist/css/inline-edit.css">
   <!-- Estilos para el theme switcher -->
   <link rel="stylesheet" href="assets/dist/css/theme-switcher.css">
-  <!-- Estilos para filtro de contactos -->
-  <link rel="stylesheet" href="assets/dist/css/filtro-contactos.css">
-  <!-- Estilo Dashboard Gestion de Servicios -->
-  <link rel="stylesheet" href="assets/dist/css/dashboard-service.css">
 </head>
 <body class="hold-transition sidebar-mini theme-light">
 <div class="wrapper">
