@@ -515,8 +515,8 @@ public function CompletarServicio(){
         }
         
         // Obtener datos necesarios para el formulario
-        $asistentes_actuales = $this->modelo->ObtenerAsistentesServicio($id_servicio);
-        $empleados_disponibles = $this->modelo->ObtenerEmpleadosDisponibles();
+        $asistentes_actuales = $this->modelo->obtenerAsistentesServicio($id_servicio);
+        $empleados_disponibles = $this->modelo->obtenerEmpleadosDisponibles();
         $categorias_servicio = $this->modelo->ObtenerCategoriasServicio();
         $metodos_aplicacion = $this->modelo->ObtenerMetodosAplicacion();
         
@@ -711,6 +711,27 @@ private function ProcesarFormularioFinalizacion($id_servicio){
             
             $resultado['success'] = true;
             $resultado['mensaje'] = "Servicio finalizado exitosamente. ID: " . $id_servicio;
+            
+            // Generar PDF automáticamente al finalizar servicio
+            try {
+                require_once 'servicePdf.controlador.php';
+                
+                // Usar tu método estático de conexión
+                $conexion = BasedeDatos::Conectar();
+                
+                if ($conexion) {
+                    $pdfController = new ServicePdfController($conexion);
+                    $resultadoPdf = $pdfController->generateServicePdf($id_servicio);
+                    
+                    if (!$resultadoPdf['success']) {
+                        error_log("Error al generar PDF automático para servicio $id_servicio: " . $resultadoPdf['message']);
+                    }
+                }
+                
+            } catch (Exception $e) {
+                error_log("Excepción al generar PDF automático: " . $e->getMessage());
+            }
+            
         } else {
             throw new Exception("No se pudo finalizar el servicio");
         }

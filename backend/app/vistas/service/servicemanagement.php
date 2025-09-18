@@ -353,10 +353,15 @@ $filtro_empleado = isset($_GET['empleado']) ? $_GET['empleado'] : '';
 
                                     <!-- Botón de descarga de orden -->
                                     <div class="text-center mt-2">
-                                        <a href="#" class="btn btn-info btn-sm">
-                                            <i class="fas fa-download"></i> Descargar Orden
-                                        </a>
-                                    </div>
+                                    <button id="download-btn-<?= $servicio->id_service ?>" 
+                                            onclick="downloadServiceReport(<?= $servicio->id_service ?>)" 
+                                            class="btn btn-success btn-sm" 
+                                            title="Descargar reporte PDF">
+                                        <i class="fas fa-download"></i> Descargar Reporte
+                                    </button>
+
+                                    <!-- Indicador de estado del PDF -->
+                                    <div id="pdf-status-<?= $servicio->id_service ?>" class="pdf-status-indicator"></div>
                                 </div>
                             </div>
                         <?php endforeach; ?>
@@ -376,5 +381,128 @@ $filtro_empleado = isset($_GET['empleado']) ? $_GET['empleado'] : '';
     </section>
 </div>
 </div>
-                   
 
+
+<script>
+// Función simplificada para descargar reporte PDF
+function downloadServiceReport(serviceId) {
+    const button = document.getElementById('download-btn-table-' + serviceId) || 
+                   document.getElementById('download-btn-' + serviceId);
+    const statusDiv = document.getElementById('pdf-status-table-' + serviceId) || 
+                      document.getElementById('pdf-status-' + serviceId);
+    
+    if (button) {
+        const originalHtml = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Descargando...';
+        button.disabled = true;
+        
+        // Verificar si el PDF existe antes de intentar descarga
+        fetch('check_pdf_status.php?service_id=' + serviceId)
+            .then(response => response.json())
+            .then(data => {
+                if (data.available) {
+                    // PDF disponible, iniciar descarga directa
+                    window.location.href = 'download_report.php?service_id=' + serviceId;
+                    showPdfMessage('Descarga iniciada correctamente', 'success');
+                    
+                    if (statusDiv) {
+                        statusDiv.innerHTML = '<small class="text-success"><i class="fas fa-check-circle"></i> PDF listo</small>';
+                    }
+                } else {
+                    // PDF no disponible
+                    showPdfMessage('El PDF no está disponible. Debe finalizar el servicio primero.', 'warning');
+                    
+                    if (statusDiv) {
+                        statusDiv.innerHTML = '<small class="text-warning"><i class="fas fa-exclamation-triangle"></i> PDF no generado</small>';
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showPdfMessage('Error al verificar el PDF', 'error');
+            })
+            .finally(() => {
+                // Restaurar botón
+                button.innerHTML = originalHtml;
+                button.disabled = false;
+            });
+    }
+}
+
+// Función auxiliar para mostrar mensajes (nombre único para evitar conflictos)
+function showPdfMessage(message, type) {
+    let alertClass = 'alert-info';
+    switch(type) {
+        case 'success': alertClass = 'alert-success'; break;
+        case 'warning': alertClass = 'alert-warning'; break;
+        case 'error': alertClass = 'alert-danger'; break;
+    }
+    
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert ${alertClass} alert-dismissible fade show mx-3 mt-3`;
+    alertDiv.innerHTML = `
+        <i class="fas fa-info-circle"></i> ${message}
+        <button type="button" class="close" data-dismiss="alert">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    `;
+    
+    const contentHeader = document.querySelector('.content-header');
+    if (contentHeader) {
+        contentHeader.parentNode.insertBefore(alertDiv, contentHeader.nextSibling);
+        
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.parentNode.removeChild(alertDiv);
+            }
+        }, 5000);
+    }
+}
+
+// Verificar estado inicial de PDFs al cargar la página
+document.addEventListener('DOMContentLoaded', function() {
+    const downloadButtons = document.querySelectorAll('[id^="download-btn-table-"], [id^="download-btn-"]');
+    
+    downloadButtons.forEach(button => {
+        const serviceId = button.id.replace('download-btn-table-', '').replace('download-btn-', '');
+        const statusDiv = document.getElementById('pdf-status-table-' + serviceId) || 
+                          document.getElementById('pdf-status-' + serviceId);
+        
+        // Verificar estado inicial del PDF
+        fetch('check_pdf_status.php?service_id=' + serviceId)
+            .then(response => response.json())
+            .then(data => {
+                if (statusDiv) {
+                    if (data.available) {
+                        statusDiv.innerHTML = '<small class="text-success"><i class="fas fa-check-circle"></i> PDF listo</small>';
+                    } else {
+                        statusDiv.innerHTML = '<small class="text-muted"><i class="fas fa-info-circle"></i> PDF se genera al finalizar</small>';
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error al verificar estado inicial:', error);
+            });
+    });
+});
+</script>
+
+<style>
+/* Estilos para indicadores de estado del PDF */
+.pdf-status-indicator {
+    margin-top: 2px;
+    font-size: 0.7rem;
+}
+
+.pdf-status-indicator .text-success {
+    color: #28a745 !important;
+}
+
+.pdf-status-indicator .text-warning {
+    color: #ffc107 !important;
+}
+
+.pdf-status-indicator .text-muted {
+    color: #6c757d !important;
+}
+</style>

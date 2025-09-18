@@ -137,13 +137,13 @@
         <li class="nav-item">
           <a href="?c=service" class="nav-link">
             <i class="far fa-circle nav-icon"></i>
-            <p>Gestionar Estado de Servicios</p>
+            <p>Gestionar Por Estados</p>
           </a>
         </li>
         <li class="nav-item">
           <a href="?c=service&a=VistaTablaAdmin" class="nav-link">
             <i class="far fa-circle nav-icon"></i>
-            <p>Gestionar Todos Los Servicios</p>
+            <p>Tabla de Gestión</p>
           </a>
         </li>
         <li class="nav-item">

@@ -941,7 +941,7 @@ public function ObtenerAsistentesServicio($id_servicio){
 /**
  * Obtener categorías de un servicio
  */
-private function obtenerCategoriasServicio($id_servicio){
+private function obtenerCategoriasDeServicio($id_servicio){
     try {
         $sql = "SELECT GROUP_CONCAT(sc.name_service_category SEPARATOR ', ') as categorias
                 FROM SRVIC_TYPE st
@@ -961,7 +961,7 @@ private function obtenerCategoriasServicio($id_servicio){
 /**
  * Obtener métodos de aplicación de un servicio
  */
-private function obtenerMetodosAplicacion($id_servicio){
+private function obtenerMetodosDeAplicacion($id_servicio){
     try {
         $sql = "SELECT GROUP_CONCAT(am.name_application_method SEPARATOR ', ') as metodos
                 FROM SRVIC_SYSTEM ss_method
@@ -975,6 +975,50 @@ private function obtenerMetodosAplicacion($id_servicio){
         return $resultado ? $resultado->metodos : null;
     } catch (Exception $e) {
         return null;
+    }
+}
+
+/**
+ * Obtener todas las categorías de servicio disponibles (público)
+ * Para usar en formularios
+ */
+public function ObtenerCategoriasServicio(){
+    try{
+        $sql = "SELECT 
+            id_service_category, 
+            name_service_category, 
+            description 
+        FROM SERVICE_CATEGORY 
+        WHERE status = 1 
+        ORDER BY name_service_category";
+        
+        $consulta = $this->pdo->prepare($sql);
+        $consulta->execute();
+        return $consulta->fetchAll(PDO::FETCH_OBJ);
+    }catch(Exception $e){
+        throw new Exception("Error al obtener categorías de servicio: " . $e->getMessage());
+    }
+}
+
+/**
+ * Obtener todos los métodos de aplicación disponibles (público)
+ * Para usar en formularios
+ */
+public function ObtenerMetodosAplicacion(){
+    try{
+        $sql = "SELECT 
+            id_application_method, 
+            name_application_method, 
+            description 
+        FROM APPLICATION_METHOD 
+        WHERE status = 1 
+        ORDER BY name_application_method";
+        
+        $consulta = $this->pdo->prepare($sql);
+        $consulta->execute();
+        return $consulta->fetchAll(PDO::FETCH_OBJ);
+    }catch(Exception $e){
+        throw new Exception("Error al obtener métodos de aplicación: " . $e->getMessage());
     }
 }
 
@@ -1577,8 +1621,8 @@ public function ObtenerServiciosTablaAdmin($filtros = [], $limit = 30, $offset =
         foreach ($servicios as $servicio) {
             $servicio->tecnico_encargado = $this->obtenerTecnicoEncargado($servicio->id_service);
             $servicio->tecnicos_asistentes = $this->obtenerTecnicosAsistentes($servicio->id_service);
-            $servicio->categorias_servicio = $this->obtenerCategoriasServicio($servicio->id_service);
-            $servicio->metodos_aplicacion = $this->obtenerMetodosAplicacion($servicio->id_service);
+            $servicio->categorias_servicio = $this->obtenerCategoriasDeServicio($servicio->id_service);
+            $servicio->metodos_aplicacion = $this->ObtenerMetodosDeAplicacion($servicio->id_service);
             
             $croquis_info = $this->verificarCroquis($servicio->id_service);
             $servicio->tiene_croquis = $croquis_info['tiene_croquis'];
