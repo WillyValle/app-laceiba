@@ -189,7 +189,7 @@ private function ProcesarFormularioServicio(){
     $resultado = ['success' => false, 'errores' => [], 'mensaje' => ''];
     
     try {
-        // Validar datos requeridos
+        // Validar datos requeridos (REMOVIDO: validación del estado)
         if (empty($_POST['customer_id_customer'])) {
             $errores[] = "Debe seleccionar un cliente";
         }
@@ -200,10 +200,6 @@ private function ProcesarFormularioServicio(){
         
         if (empty($_POST['empleado_encargado'])) {
             $errores[] = "Debe seleccionar un empleado encargado";
-        }
-        
-        if (empty($_POST['service_status_id_service_status'])) {
-            $errores[] = "Debe seleccionar un estado de servicio";
         }
         
         // Si hay errores de validación, retornar
@@ -219,10 +215,6 @@ private function ProcesarFormularioServicio(){
         
         if (!$this->modelo->ValidarEmpleado($_POST['empleado_encargado'])) {
             $errores[] = "El empleado encargado seleccionado no existe o no está activo";
-        }
-        
-        if (!$this->modelo->ValidarEstadoServicio($_POST['service_status_id_service_status'])) {
-            $errores[] = "El estado de servicio seleccionado no existe o no está activo";
         }
         
         // Validar empleados asistentes si se seleccionaron
@@ -242,12 +234,15 @@ private function ProcesarFormularioServicio(){
             return $resultado;
         }
         
+        // MODIFICADO: Obtener estado automáticamente
+        $estado_automatico = $this->modelo->ObtenerEstadoProgramadoPorDefecto();
+        
         // Preparar datos para crear el servicio
         $datos_servicio = [
             'notes' => !empty($_POST['notes']) ? $_POST['notes'] : null,
             'preset_dt_hr' => $_POST['preset_dt_hr'],
             'customer_id_customer' => (int)$_POST['customer_id_customer'],
-            'service_status_id_service_status' => (int)$_POST['service_status_id_service_status']
+            'service_status_id_service_status' => $estado_automatico // MODIFICADO: Estado automático
         ];
         
         // Crear el servicio (esto ya crea la estructura de directorios)
@@ -927,6 +922,353 @@ public function ContinuarServicio(){
         header("location: ?c=service&a=VistaTecnico&empleado=" . $empleado . "&error=" . $mensaje_error);
     }
 }
+
+/**
+ * Mostrar formulario para reprogramar un servicio existente
+ * Carga los datos actuales del servicio en el formulario
+ */
+public function ReprogramarServicio(){
+    try {
+        $id_servicio = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+        
+        if ($id_servicio <= 0) {
+            throw new Exception("ID de servicio no válido");
+        }
+        
+        // Obtener información completa del servicio
+        $servicio_actual = $this->modelo->ObtenerServicioCompleto($id_servicio);
+        
+        if (!$servicio_actual) {
+            throw new Exception("Servicio no encontrado");
+        }
+        
+        // Verificar que el servicio esté en estado "Programado" (puede ser reprogramado)
+        if ($servicio_actual->service_status_id_service_status != 1) {
+            throw new Exception("Solo se pueden reprogramar servicios en estado 'Programado'");
+        }
+        
+        // Obtener datos necesarios para los selects del formulario
+        $clientes = $this->modelo->ListarClientes();
+        $empleados = $this->modelo->ObtenerEmpleadosDisponibles();
+        $estados = $this->modelo->ObtenerEstadosDisponibles();
+        
+        // Obtener empleados asignados actualmente
+        $empleado_encargado_actual = $this->modelo->ObtenerEncargadoServicio($id_servicio);
+        $asistentes_actuales = $this->modelo->ObtenerAsistentesServicio($id_servicio);
+        
+        // Variables para manejo de errores y mensajes
+        $errores = [];
+        $mensaje_exito = '';
+        $modo_edicion = true; // Indicador para el formulario
+        
+        // Si se envió el formulario por POST, procesarlo
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $resultado = $this->ProcesarFormularioReprogramacion($id_servicio);
+            if ($resultado['success']) {
+                $mensaje_exito = $resultado['mensaje'];
+                // Actualizar datos del servicio después de la modificación
+                $servicio_actual = $this->modelo->ObtenerServicioCompleto($id_servicio);
+                $empleado_encargado_actual = $this->modelo->ObtenerEncargadoServicio($id_servicio);
+                $asistentes_actuales = $this->modelo->ObtenerAsistentesServicio($id_servicio);
+            } else {
+                $errores = $resultado['errores'];
+            }
+        }
+        
+        require_once "app/vistas/header.php";
+        require_once "app/vistas/service/serviceForm.php";
+        require_once "app/vistas/footer.php";
+        
+    } catch (Exception $e) {
+        $errores[] = "Error al cargar el servicio: " . $e->getMessage();
+        // Redirigir a la lista de servicios con mensaje de error
+        $mensaje_error = urlencode($e->getMessage());
+        header("location: ?c=service&error=" . $mensaje_error);
+        exit;
+    }
+}
+
+/**
+ * Procesar el formulario de reprogramación de servicio
+ * @param int $id_servicio ID del servicio a reprogramar
+ * @return array Resultado del procesamiento con éxito/errores
+ */
+private function ProcesarFormularioReprogramacion($id_servicio){
+    $errores = [];
+    $resultado = ['success' => false, 'errores' => [], 'mensaje' => ''];
+    
+    try {
+        // Validar datos requeridos (REMOVIDO: validación del estado)
+        if (empty($_POST['customer_id_customer'])) {
+            $errores[] = "Debe seleccionar un cliente";
+        }
+        
+        if (empty($_POST['preset_dt_hr'])) {
+            $errores[] = "Debe especificar la fecha y hora programada";
+        }
+        
+        if (empty($_POST['empleado_encargado'])) {
+            $errores[] = "Debe seleccionar un empleado encargado";
+        }
+        
+        // Si hay errores de validación, retornar
+        if (!empty($errores)) {
+            $resultado['errores'] = $errores;
+            return $resultado;
+        }
+        
+        // Validar que los IDs existan en la base de datos
+        if (!$this->modelo->ValidarCliente($_POST['customer_id_customer'])) {
+            $errores[] = "El cliente seleccionado no existe o no está activo";
+        }
+        
+        if (!$this->modelo->ValidarEmpleado($_POST['empleado_encargado'])) {
+            $errores[] = "El empleado encargado seleccionado no existe o no está activo";
+        }
+        
+        // Validar empleados asistentes si se seleccionaron
+        $empleados_asistentes = [];
+        if (isset($_POST['empleados_asistentes']) && is_array($_POST['empleados_asistentes'])) {
+            foreach ($_POST['empleados_asistentes'] as $id_asistente) {
+                if (!$this->modelo->ValidarEmpleado($id_asistente)) {
+                    $errores[] = "Uno de los empleados asistentes seleccionados no existe o no está activo";
+                    break;
+                }
+                $empleados_asistentes[] = $id_asistente;
+            }
+        }
+        
+        if (!empty($errores)) {
+            $resultado['errores'] = $errores;
+            return $resultado;
+        }
+        
+        // MODIFICADO: En reprogramación, mantener el estado actual
+        $servicio_actual = $this->modelo->ObtenerServicioCompleto($id_servicio);
+        
+        // Preparar datos para actualizar el servicio
+        $datos_servicio = [
+            'notes' => !empty($_POST['notes']) ? $_POST['notes'] : null,
+            'preset_dt_hr' => $_POST['preset_dt_hr'],
+            'customer_id_customer' => (int)$_POST['customer_id_customer'],
+            'service_status_id_service_status' => $servicio_actual->service_status_id_service_status // MODIFICADO: Mantener estado actual
+        ];
+        
+        // Actualizar el servicio
+        $actualizado = $this->modelo->ActualizarServicio($id_servicio, $datos_servicio);
+        
+        if (!$actualizado) {
+            throw new Exception("No se pudo actualizar el servicio");
+        }
+        
+        // Actualizar asignación de empleados
+        $this->modelo->ActualizarEmpleadosServicio(
+            $id_servicio, 
+            (int)$_POST['empleado_encargado'], 
+            $empleados_asistentes
+        );
+        
+        // Procesar archivo PDF si se subió (opcional en reprogramación)
+        if (isset($_FILES['archivo_pdf']) && $_FILES['archivo_pdf']['error'] !== UPLOAD_ERR_NO_FILE) {
+            $validacion_archivo = $this->ValidarArchivoPDF($_FILES['archivo_pdf'], $id_servicio);
+            if (!$validacion_archivo['success']) {
+                // Si falla la subida del PDF, no fallar todo el proceso
+                $resultado['mensaje'] = "Servicio reprogramado exitosamente (ID: " . $id_servicio . "), pero hubo un problema con el archivo PDF: " . implode(', ', $validacion_archivo['errores']);
+            } else {
+                // Guardar referencia del archivo en base de datos
+                $this->modelo->GuardarArchivoServicio($id_servicio, $validacion_archivo['ruta'], 'PDF');
+            }
+        }
+        
+        $resultado['success'] = true;
+        if (empty($resultado['mensaje'])) {
+            $resultado['mensaje'] = "Servicio reprogramado exitosamente. ID: " . $id_servicio;
+        }
+        
+    } catch (Exception $e) {
+        $errores[] = "Error al procesar la reprogramación: " . $e->getMessage();
+        $resultado['errores'] = $errores;
+    }
+    
+    return $resultado;
+}
+
+/**
+ * Vista de tabla administrativa con todos los servicios
+ * Muestra información completa en formato tabular con filtros avanzados
+ */
+public function VistaTablaAdmin(){
+    try {
+        // Obtener datos para filtros
+        $clientes = $this->modelo->ListarClientes();
+        $empleados = $this->modelo->ListarEmpleados();
+        $estados = $this->modelo->ListarEstadosServicio();
+        
+        if (empty($estados)) {
+            $estados = [];
+        }
+        
+        // Procesar filtros y búsqueda
+        $filtros = $this->procesarFiltrosTabla();
+        
+        // Manejar paginación
+        $pagina_actual = isset($_GET['pagina']) ? max(1, (int)$_GET['pagina']) : 1;
+        $registros_por_pagina = 30;
+        $offset = ($pagina_actual - 1) * $registros_por_pagina;
+        
+        // Obtener servicios
+        $servicios = $this->modelo->ObtenerServiciosTablaAdmin($filtros, $registros_por_pagina, $offset);
+        
+        // Obtener total de registros
+        $total_servicios = $this->modelo->ContarServiciosTablaAdmin($filtros);
+        $total_paginas = ceil($total_servicios / $registros_por_pagina);
+        
+        require_once "app/vistas/header.php";
+        require_once "app/vistas/service/serviceTableAdmin.php";
+        require_once "app/vistas/footer.php";
+        
+    } catch (Exception $e) {
+        $errores = ["Error: " . $e->getMessage()];
+        $servicios = [];
+        $clientes = [];
+        $empleados = [];
+        $estados = [];
+        $total_servicios = 0;
+        $total_paginas = 0;
+        $pagina_actual = 1;
+        
+        require_once "app/vistas/header.php";
+        require_once "app/vistas/service/serviceTableAdmin.php";
+        require_once "app/vistas/footer.php";
+    }
+}
+
+/**
+ * Construir URL para paginación manteniendo filtros actuales
+ * @param int $pagina Número de página
+ * @return string URL completa con parámetros
+ */
+private function construirUrlPaginacion($pagina){
+    $params = [];
+    $params['c'] = 'service';
+    $params['a'] = 'VistaTablaAdmin';
+    $params['pagina'] = $pagina;
+    
+    // Mantener filtros actuales
+    if (isset($_GET['cliente']) && !empty($_GET['cliente'])) {
+        $params['cliente'] = $_GET['cliente'];
+    }
+    if (isset($_GET['fecha_desde']) && !empty($_GET['fecha_desde'])) {
+        $params['fecha_desde'] = $_GET['fecha_desde'];
+    }
+    if (isset($_GET['fecha_hasta']) && !empty($_GET['fecha_hasta'])) {
+        $params['fecha_hasta'] = $_GET['fecha_hasta'];
+    }
+    if (isset($_GET['empleado']) && !empty($_GET['empleado'])) {
+        $params['empleado'] = $_GET['empleado'];
+    }
+    if (isset($_GET['estado']) && !empty($_GET['estado'])) {
+        $params['estado'] = $_GET['estado'];
+    }
+    if (isset($_GET['buscar_servicio']) && !empty($_GET['buscar_servicio'])) {
+        $params['buscar_servicio'] = $_GET['buscar_servicio'];
+    }
+    
+    return '?' . http_build_query($params);
+}
+
+/**
+ * Procesar filtros específicos para la vista de tabla administrativa
+ * @return array Filtros procesados incluyendo búsqueda por número de servicio
+ */
+private function procesarFiltrosTabla(){
+    $filtros = [];
+    
+    // Filtro por cliente
+    if (isset($_GET['cliente']) && !empty($_GET['cliente'])) {
+        $filtros['cliente'] = (int)$_GET['cliente'];
+    }
+    
+    // Filtro por fecha desde
+    if (isset($_GET['fecha_desde']) && !empty($_GET['fecha_desde'])) {
+        $filtros['fecha_desde'] = $_GET['fecha_desde'];
+    }
+    
+    // Filtro por fecha hasta
+    if (isset($_GET['fecha_hasta']) && !empty($_GET['fecha_hasta'])) {
+        $filtros['fecha_hasta'] = $_GET['fecha_hasta'];
+    }
+    
+    // Filtro por empleado
+    if (isset($_GET['empleado']) && !empty($_GET['empleado'])) {
+        $filtros['empleado'] = (int)$_GET['empleado'];
+    }
+    
+    // Filtro por estado
+    if (isset($_GET['estado']) && !empty($_GET['estado'])) {
+        $filtros['estado'] = (int)$_GET['estado'];
+    }
+    
+    // Búsqueda por número de servicio
+    if (isset($_GET['buscar_servicio']) && !empty($_GET['buscar_servicio'])) {
+        $filtros['numero_servicio'] = (int)$_GET['buscar_servicio'];
+    }
+    
+    return $filtros;
+}
+
+/**
+ * Subir croquis para un servicio específico
+ * Para servicios que no tienen croquis subido
+ */
+public function SubirCroquis(){
+    try {
+        $id_servicio = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+        
+        if ($id_servicio <= 0) {
+            throw new Exception("ID de servicio no válido");
+        }
+        
+        // Verificar que el servicio existe
+        $servicio = $this->modelo->Obtener($id_servicio);
+        if (!$servicio) {
+            throw new Exception("Servicio no encontrado");
+        }
+        
+        $errores = [];
+        $mensaje_exito = '';
+        
+        // Procesar archivo si se envió
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['croquis_pdf'])) {
+            $validacion_archivo = $this->ValidarArchivoPDF($_FILES['croquis_pdf'], $id_servicio);
+            if ($validacion_archivo['success']) {
+                // Guardar referencia del archivo en base de datos
+                $this->modelo->GuardarArchivoServicio($id_servicio, $validacion_archivo['ruta'], 'PDF');
+                $mensaje_exito = "Croquis subido exitosamente para el servicio #" . $id_servicio;
+                
+                // Redirigir de vuelta a la vista de tabla con mensaje
+                $mensaje_encoded = urlencode($mensaje_exito);
+                header("location: ?c=service&a=VistaTablaAdmin&success=" . $mensaje_encoded);
+                exit;
+            } else {
+                $errores = $validacion_archivo['errores'];
+            }
+        }
+        
+        require_once "app/vistas/header.php";
+        require_once "app/vistas/service/subirCroquis.php";
+        require_once "app/vistas/footer.php";
+        
+    } catch (Exception $e) {
+        $mensaje_error = urlencode($e->getMessage());
+        header("location: ?c=service&a=VistaTablaAdmin&error=" . $mensaje_error);
+        exit;
+    }
+}
+
+
+
+
 
 
 }

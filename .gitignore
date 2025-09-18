@@ -14,3 +14,6 @@ mysql_data
 # Archivos temporales del sistema
 *.log
 *.tmp
+
+# Directorio de archivos
+backend/uploads/

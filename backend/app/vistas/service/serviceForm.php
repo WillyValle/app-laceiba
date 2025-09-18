@@ -1,12 +1,33 @@
 <!-- Vista para crear nuevo servicio - app/vistas/service/serviceForm.php -->
 
+<?php
+// Variables para modo edición - AGREGADO
+$es_edicion = isset($modo_edicion) && $modo_edicion === true;
+$titulo_formulario = $es_edicion ? 'Reprogramar Servicio' : 'Programar Nuevo Servicio';
+$accion_formulario = $es_edicion ? 'ReprogramarServicio' : 'NuevoServicio';
+$id_servicio_param = $es_edicion && isset($servicio_actual) ? '&id=' . $servicio_actual->id_service : '';
+?>
 
   <div class="content-header">
         <div class="container-fluid">
             <div class="row mb-2">
                 <div class="col-sm-6">
-                    <h1 class="m-0"><?= isset($titulo_pagina) ? $titulo_pagina : 'Programar Nuevo Servicio' ?></h1>
+                    <!-- MODIFICADO: título dinámico -->
+                    <h1 class="m-0"><?= $titulo_formulario ?></h1>
+                    <?php if ($es_edicion && isset($servicio_actual)): ?>
+                        <small class="text-muted">Servicio #<?= $servicio_actual->id_service ?></small>
+                    <?php endif; ?>
                 </div>
+                <!-- AGREGADO: botón volver si es edición -->
+                <?php if ($es_edicion): ?>
+                <div class="col-sm-6">
+                    <div class="breadcrumb float-sm-right">
+                        <a href="?c=service" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-arrow-left"></i> Volver a Servicios
+                        </a>
+                    </div>
+                </div>
+                <?php endif; ?>
             </div>
         </div>
   </div>
@@ -38,10 +59,11 @@
     </div>
   <?php endif; ?>
 
-  <form action="?c=service&a=NuevoServicio" method="POST" enctype="multipart/form-data" id="formServicio">
+  <!-- MODIFICADO: action dinámico -->
+  <form action="?c=service&a=<?= $accion_formulario ?><?= $id_servicio_param ?>" method="POST" enctype="multipart/form-data" id="formServicio">
     <div class="card-body">
       
-      <!-- Primera fila: Cliente y Estado -->
+      <!-- Primera fila: Solo Cliente (Estado se asigna automáticamente) -->
       <div class="row">
         <div class="col-md-6">
           <div class="form-group">
@@ -51,7 +73,14 @@
               <?php if (!empty($clientes)): ?>
                 <?php foreach ($clientes as $cliente): ?>
                   <option value="<?php echo $cliente->id_customer; ?>"
-                    <?php echo (isset($_POST['customer_id_customer']) && $_POST['customer_id_customer'] == $cliente->id_customer) ? 'selected' : ''; ?>>
+                    <?php 
+                    // MODIFICADO: lógica de selección para edición
+                    if ($es_edicion && isset($servicio_actual) && $servicio_actual->customer_id_customer == $cliente->id_customer) {
+                        echo 'selected';
+                    } elseif (!$es_edicion && isset($_POST['customer_id_customer']) && $_POST['customer_id_customer'] == $cliente->id_customer) {
+                        echo 'selected';
+                    }
+                    ?>>
                     <?php echo htmlspecialchars($cliente->name_customer); ?>
                   </option>
                 <?php endforeach; ?>
@@ -59,26 +88,33 @@
             </select>
           </div>
         </div>
+        <?php if ($es_edicion): ?>
+        <!-- En edición, mostrar el estado actual como información -->
         <div class="col-md-6">
           <div class="form-group">
-            <label for="service_status_id_service_status">Estado del Servicio<span class="text-danger">*</span></label>
-            <select class="form-control" id="service_status_id_service_status" name="service_status_id_service_status" required>
-              <option value="">Seleccione...</option>
-              <?php if (!empty($estados)): ?>
-                <?php foreach ($estados as $estado): ?>
-                  <!-- Solo mostrar "Programado" o estados similares -->
-                  <?php if (stripos($estado->name_service_status, 'programado') !== false || 
-                            stripos($estado->name_service_status, 'pendiente') !== false): ?>
-                    <option value="<?php echo $estado->id_service_status; ?>"
-                      <?php echo (isset($_POST['service_status_id_service_status']) && $_POST['service_status_id_service_status'] == $estado->id_service_status) ? 'selected' : ''; ?>>
-                      <?php echo htmlspecialchars($estado->name_service_status); ?>
-                    </option>
-                  <?php endif; ?>
-                <?php endforeach; ?>
-              <?php endif; ?>
-            </select>
+            <label>Estado Actual del Servicio</label>
+            <div class="form-control-plaintext">
+              <span class="badge badge-info">
+                <?php echo isset($servicio_actual) ? htmlspecialchars($servicio_actual->name_service_status) : 'N/A'; ?>
+              </span>
+            </div>
+            <small class="form-text text-muted">El estado se mantiene al reprogramar</small>
           </div>
         </div>
+        <?php else: ?>
+        <!-- En creación, mostrar información del estado automático -->
+        <div class="col-md-6">
+          <div class="form-group">
+            <label>Estado del Servicio</label>
+            <div class="form-control-plaintext">
+              <span class="badge badge-warning">
+                <i class="fas fa-clock"></i> Se asignará automáticamente como "Programado"
+              </span>
+            </div>
+            <small class="form-text text-muted">El servicio se creará en estado pendiente de ejecución</small>
+          </div>
+        </div>
+        <?php endif; ?>
       </div>
 
       <!-- Segunda fila: Fecha y Empleado Encargado -->
@@ -91,7 +127,14 @@
               class="form-control" 
               id="preset_dt_hr" 
               name="preset_dt_hr"
-              value="<?php echo isset($_POST['preset_dt_hr']) ? $_POST['preset_dt_hr'] : ''; ?>"
+              value="<?php 
+              // MODIFICADO: valor dinámico para edición
+              if ($es_edicion && isset($servicio_actual) && $servicio_actual->preset_dt_hr) {
+                  echo date('Y-m-d\TH:i', strtotime($servicio_actual->preset_dt_hr));
+              } elseif (!$es_edicion && isset($_POST['preset_dt_hr'])) {
+                  echo htmlspecialchars($_POST['preset_dt_hr']);
+              }
+              ?>"
               required>
           </div>
         </div>
@@ -103,7 +146,14 @@
               <?php if (!empty($empleados)): ?>
                 <?php foreach ($empleados as $empleado): ?>
                   <option value="<?php echo $empleado->id_employee; ?>"
-                    <?php echo (isset($_POST['empleado_encargado']) && $_POST['empleado_encargado'] == $empleado->id_employee) ? 'selected' : ''; ?>>
+                    <?php 
+                    // MODIFICADO: lógica de selección para edición
+                    if ($es_edicion && isset($empleado_encargado_actual) && $empleado_encargado_actual->id_employee == $empleado->id_employee) {
+                        echo 'selected';
+                    } elseif (!$es_edicion && isset($_POST['empleado_encargado']) && $_POST['empleado_encargado'] == $empleado->id_employee) {
+                        echo 'selected';
+                    }
+                    ?>>
                     <?php echo htmlspecialchars($empleado->nombre_completo); ?>
                   </option>
                 <?php endforeach; ?>
@@ -126,7 +176,21 @@
               <?php if (!empty($empleados)): ?>
                 <?php foreach ($empleados as $empleado): ?>
                   <option value="<?php echo $empleado->id_employee; ?>"
-                    <?php echo (isset($_POST['empleados_asistentes']) && in_array($empleado->id_employee, $_POST['empleados_asistentes'])) ? 'selected' : ''; ?>>
+                    <?php 
+                    // MODIFICADO: lógica de selección para edición
+                    $esta_seleccionado = false;
+                    if ($es_edicion && isset($asistentes_actuales)) {
+                        foreach ($asistentes_actuales as $asistente) {
+                            if ($asistente->id_employee == $empleado->id_employee) {
+                                $esta_seleccionado = true;
+                                break;
+                            }
+                        }
+                    } elseif (!$es_edicion && isset($_POST['empleados_asistentes']) && in_array($empleado->id_employee, $_POST['empleados_asistentes'])) {
+                        $esta_seleccionado = true;
+                    }
+                    echo $esta_seleccionado ? 'selected' : '';
+                    ?>>
                     <?php echo htmlspecialchars($empleado->nombre_completo); ?>
                   </option>
                 <?php endforeach; ?>
@@ -166,7 +230,14 @@
               name="notes" 
               rows="4" 
               placeholder="Escriba aquí cualquier información adicional sobre el servicio..."
-              maxlength="500"><?php echo isset($_POST['notes']) ? htmlspecialchars($_POST['notes']) : ''; ?></textarea>
+              maxlength="500"><?php 
+              // MODIFICADO: valor dinámico para edición con validación de null
+              if ($es_edicion && isset($servicio_actual) && !is_null($servicio_actual->notes)) {
+                  echo htmlspecialchars($servicio_actual->notes);
+              } elseif (!$es_edicion && isset($_POST['notes']) && !is_null($_POST['notes'])) {
+                  echo htmlspecialchars($_POST['notes']);
+              }
+            ?></textarea>
             <small class="form-text text-muted">Máximo 500 caracteres</small>
           </div>
         </div>
@@ -175,15 +246,19 @@
     </div>
 
     <div class="card-footer">
+      <!-- MODIFICADO: texto del botón dinámico -->
       <button type="submit" class="btn btn-primary" id="btnGuardar">
-        <i class="fas fa-save"></i> Programar Servicio
+        <i class="fas fa-save"></i> <?= $es_edicion ? 'Actualizar Servicio' : 'Programar Servicio' ?>
       </button>
       <a href="?c=service" class="btn btn-secondary ml-2">
         <i class="fas fa-times"></i> Cancelar
       </a>
+      <!-- MODIFICADO: botón limpiar solo en modo creación -->
+      <?php if (!$es_edicion): ?>
       <button type="reset" class="btn btn-outline-secondary ml-2" onclick="limpiarFormulario()">
         <i class="fas fa-eraser"></i> Limpiar
       </button>
+      <?php endif; ?>
     </div>
   </form>
 </div>

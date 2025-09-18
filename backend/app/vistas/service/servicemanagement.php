@@ -166,9 +166,9 @@ $filtro_empleado = isset($_GET['empleado']) ? $_GET['empleado'] : '';
                                         <a href="#" class="btn btn-tool btn-link">
                                             #<?= htmlspecialchars($servicio->id_service) ?>
                                         </a>
-                                        <a href="?c=service&a=VerDetalle&id=<?= $servicio->id_service ?>" 
-                                           class="btn btn-tool" title="Ver detalles">
-                                            <i class="fas fa-eye"></i>
+                                        <a href="?c=service&a=ReprogramarServicio&id=<?= $servicio->id_service ?>" 
+                                        class="btn btn-tool" title="Reprogramar servicio">
+                                            <i class="fas fa-edit text-warning"></i>
                                         </a>
                                     </div>
                                 </div>
@@ -249,10 +249,6 @@ $filtro_empleado = isset($_GET['empleado']) ? $_GET['empleado'] : '';
                                     <div class="card-tools">
                                         <a href="#" class="btn btn-tool btn-link">
                                             #<?= htmlspecialchars($servicio->id_service) ?>
-                                        </a>
-                                        <a href="?c=service&a=VerDetalle&id=<?= $servicio->id_service ?>" 
-                                           class="btn btn-tool" title="Ver detalles">
-                                            <i class="fas fa-eye"></i>
                                         </a>
                                     </div>
                                 </div>

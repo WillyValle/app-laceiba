@@ -301,14 +301,31 @@ class Service{
      * @return array
      */
     public function ListarEstadosServicio(){
-        try{
-            $consulta = $this->pdo->prepare("SELECT * FROM SERVICE_STATUS WHERE status = 1 ORDER BY id_service_status");
-            $consulta->execute();
-            return $consulta->fetchAll(PDO::FETCH_OBJ);
-        }catch(Exception $e){
-            die($e->getMessage());
+    try{
+        $consulta = $this->pdo->prepare("
+            SELECT 
+                id_service_status, 
+                name_service_status, 
+                description,
+                status
+            FROM SERVICE_STATUS 
+            WHERE status = 1 
+            ORDER BY id_service_status
+        ");
+        $consulta->execute();
+        $resultado = $consulta->fetchAll(PDO::FETCH_OBJ);
+        
+        // Debug: verificar que la consulta devuelva datos válidos
+        if (empty($resultado)) {
+            error_log("ListarEstadosServicio: No se encontraron estados de servicio");
         }
+        
+        return $resultado;
+    }catch(Exception $e){
+        error_log("Error en ListarEstadosServicio: " . $e->getMessage());
+        return []; // Devolver array vacío en caso de error
     }
+}
 
     /**
      * Obtener un servicio específico por ID
@@ -922,46 +939,42 @@ public function ObtenerAsistentesServicio($id_servicio){
 }
 
 /**
- * Obtener todas las categorías de servicio disponibles
- * @return array Lista de categorías activas
+ * Obtener categorías de un servicio
  */
-public function ObtenerCategoriasServicio(){
-    try{
-        $sql = "SELECT 
-            id_service_category, 
-            name_service_category, 
-            description 
-        FROM SERVICE_CATEGORY 
-        WHERE status = 1 
-        ORDER BY name_service_category";
+private function obtenerCategoriasServicio($id_servicio){
+    try {
+        $sql = "SELECT GROUP_CONCAT(sc.name_service_category SEPARATOR ', ') as categorias
+                FROM SRVIC_TYPE st
+                INNER JOIN SERVICE_CATEGORY sc ON st.service_category_id_service_category = sc.id_service_category
+                WHERE st.service_id_service = ?";
         
         $consulta = $this->pdo->prepare($sql);
-        $consulta->execute();
-        return $consulta->fetchAll(PDO::FETCH_OBJ);
-    }catch(Exception $e){
-        throw new Exception("Error al obtener categorías de servicio: " . $e->getMessage());
+        $consulta->execute([$id_servicio]);
+        $resultado = $consulta->fetch(PDO::FETCH_OBJ);
+        
+        return $resultado ? $resultado->categorias : null;
+    } catch (Exception $e) {
+        return null;
     }
 }
 
 /**
- * Obtener todos los métodos de aplicación disponibles
- * @return array Lista de métodos activos
+ * Obtener métodos de aplicación de un servicio
  */
-public function ObtenerMetodosAplicacion(){
-    try{
-        $sql = "SELECT 
-            id_application_method, 
-            name_application_method, 
-            description 
-        FROM APPLICATION_METHOD 
-        WHERE status = 1 
-        ORDER BY name_application_method";
+private function obtenerMetodosAplicacion($id_servicio){
+    try {
+        $sql = "SELECT GROUP_CONCAT(am.name_application_method SEPARATOR ', ') as metodos
+                FROM SRVIC_SYSTEM ss_method
+                INNER JOIN APPLICATION_METHOD am ON ss_method.application_method_id_application_method = am.id_application_method
+                WHERE ss_method.service_id_service = ?";
         
         $consulta = $this->pdo->prepare($sql);
-        $consulta->execute();
-        return $consulta->fetchAll(PDO::FETCH_OBJ);
-    }catch(Exception $e){
-        throw new Exception("Error al obtener métodos de aplicación: " . $e->getMessage());
+        $consulta->execute([$id_servicio]);
+        $resultado = $consulta->fetch(PDO::FETCH_OBJ);
+        
+        return $resultado ? $resultado->metodos : null;
+    } catch (Exception $e) {
+        return null;
     }
 }
 
@@ -1269,6 +1282,472 @@ public function ContarServiciosEmpleadoPorEstado($id_empleado, $estado_servicio)
         return (int)$resultado->total;
     }catch(Exception $e){
         return 0; // En caso de error, retornar 0
+    }
+}
+
+/**
+ * Obtener información completa de un servicio para edición/reprogramación
+ * @param int $id_servicio ID del servicio
+ * @return object|false Información completa del servicio
+ */
+public function ObtenerServicioCompleto($id_servicio){
+    try{
+        $sql = "
+        SELECT 
+            s.id_service,
+            s.notes,
+            s.preset_dt_hr,
+            s.start_dt_hr,
+            s.end_dt_hr,
+            s.inspection_problems,
+            s.inspection_location,
+            s.inspection_methods,
+            s.customer_id_customer,
+            s.service_status_id_service_status,
+            c.name_customer,
+            c.address_customer,
+            c.whatsapp as customer_whatsapp,
+            c.tel as customer_tel,
+            ss.name_service_status
+        FROM SERVICE s
+        INNER JOIN CUSTOMER c ON s.customer_id_customer = c.id_customer
+        INNER JOIN SERVICE_STATUS ss ON s.service_status_id_service_status = ss.id_service_status
+        WHERE s.id_service = :id_servicio
+        ";
+        
+        $consulta = $this->pdo->prepare($sql);
+        $consulta->bindParam(':id_servicio', $id_servicio, PDO::PARAM_INT);
+        $consulta->execute();
+        return $consulta->fetch(PDO::FETCH_OBJ);
+    }catch(Exception $e){
+        throw new Exception("Error al obtener servicio completo: " . $e->getMessage());
+    }
+}
+
+/**
+ * Obtener el empleado encargado de un servicio específico
+ * @param int $id_servicio ID del servicio
+ * @return object|false Información del empleado encargado
+ */
+public function ObtenerEncargadoServicio($id_servicio){
+    try{
+        $sql = "
+        SELECT 
+            e.id_employee,
+            e.name_employee,
+            e.lastname_employee,
+            CONCAT(e.name_employee, ' ', e.lastname_employee) as nombre_completo
+        FROM SRVIC_EMPLOYEE se
+        INNER JOIN EMPLOYEE e ON se.employee_id_employee = e.id_employee
+        INNER JOIN ROLE_IN_SERVICE ris ON se.role_in_service_id_role_in_service = ris.id_role_in_service
+        WHERE se.service_id_service = :id_servicio
+        AND LOWER(ris.name_role_in_service) LIKE '%encargado%'
+        LIMIT 1
+        ";
+        
+        $consulta = $this->pdo->prepare($sql);
+        $consulta->bindParam(':id_servicio', $id_servicio, PDO::PARAM_INT);
+        $consulta->execute();
+        return $consulta->fetch(PDO::FETCH_OBJ);
+    }catch(Exception $e){
+        throw new Exception("Error al obtener encargado del servicio: " . $e->getMessage());
+    }
+}
+
+/**
+ * Actualizar información básica de un servicio
+ * @param int $id_servicio ID del servicio a actualizar
+ * @param array $datos_servicio Array con los datos a actualizar
+ * @return bool Resultado de la operación
+ */
+public function ActualizarServicio($id_servicio, $datos_servicio){
+    try{
+        $this->pdo->beginTransaction();
+        
+        $sql = "UPDATE SERVICE SET 
+                notes = ?, 
+                preset_dt_hr = ?, 
+                customer_id_customer = ?, 
+                service_status_id_service_status = ?
+                WHERE id_service = ?";
+        
+        $consulta = $this->pdo->prepare($sql);
+        $consulta->execute(array(
+            $datos_servicio['notes'],
+            $datos_servicio['preset_dt_hr'],
+            $datos_servicio['customer_id_customer'],
+            $datos_servicio['service_status_id_service_status'],
+            $id_servicio
+        ));
+        
+        if ($consulta->rowCount() == 0) {
+            throw new Exception("No se pudo actualizar el servicio o no se encontró");
+        }
+        
+        $this->pdo->commit();
+        return true;
+    }catch(Exception $e){
+        $this->pdo->rollback();
+        throw new Exception("Error al actualizar servicio: " . $e->getMessage());
+    }
+}
+
+/**
+ * Actualizar los empleados asignados a un servicio (encargado y asistentes)
+ * @param int $id_servicio ID del servicio
+ * @param int $nuevo_encargado ID del nuevo empleado encargado
+ * @param array $nuevos_asistentes Array de IDs de nuevos empleados asistentes
+ * @return bool Resultado de la operación
+ */
+public function ActualizarEmpleadosServicio($id_servicio, $nuevo_encargado, $nuevos_asistentes = []){
+    try{
+        $this->pdo->beginTransaction();
+        
+        // Obtener IDs de roles
+        $sql_rol_encargado = "SELECT id_role_in_service FROM ROLE_IN_SERVICE 
+                             WHERE LOWER(name_role_in_service) LIKE '%encargado%' 
+                             AND status = 1 LIMIT 1";
+        $consulta = $this->pdo->prepare($sql_rol_encargado);
+        $consulta->execute();
+        $rol_encargado = $consulta->fetch(PDO::FETCH_OBJ);
+        
+        $sql_rol_asistente = "SELECT id_role_in_service FROM ROLE_IN_SERVICE 
+                             WHERE LOWER(name_role_in_service) LIKE '%asistente%' 
+                             AND status = 1 LIMIT 1";
+        $consulta = $this->pdo->prepare($sql_rol_asistente);
+        $consulta->execute();
+        $rol_asistente = $consulta->fetch(PDO::FETCH_OBJ);
+        
+        if (!$rol_encargado) {
+            throw new Exception("No se encontró el rol 'Encargado'");
+        }
+        
+        // Eliminar todas las asignaciones actuales del servicio
+        $sql_delete = "DELETE FROM SRVIC_EMPLOYEE WHERE service_id_service = ?";
+        $consulta_delete = $this->pdo->prepare($sql_delete);
+        $consulta_delete->execute(array($id_servicio));
+        
+        // Insertar nuevo empleado encargado
+        $sql_encargado = "INSERT INTO SRVIC_EMPLOYEE (
+            service_id_service, 
+            employee_id_employee, 
+            role_in_service_id_role_in_service
+        ) VALUES (?, ?, ?)";
+        
+        $consulta_encargado = $this->pdo->prepare($sql_encargado);
+        $consulta_encargado->execute(array(
+            $id_servicio,
+            $nuevo_encargado,
+            $rol_encargado->id_role_in_service
+        ));
+        
+        // Insertar nuevos asistentes si existen y hay rol definido
+        if (!empty($nuevos_asistentes) && $rol_asistente) {
+            $sql_asistente = "INSERT INTO SRVIC_EMPLOYEE (
+                service_id_service, 
+                employee_id_employee, 
+                role_in_service_id_role_in_service
+            ) VALUES (?, ?, ?)";
+            
+            $consulta_asistente = $this->pdo->prepare($sql_asistente);
+            
+            foreach ($nuevos_asistentes as $id_asistente) {
+                if (!empty($id_asistente)) {
+                    $consulta_asistente->execute(array(
+                        $id_servicio,
+                        $id_asistente,
+                        $rol_asistente->id_role_in_service
+                    ));
+                }
+            }
+        }
+        
+        $this->pdo->commit();
+        return true;
+    }catch(Exception $e){
+        $this->pdo->rollback();
+        throw new Exception("Error al actualizar empleados del servicio: " . $e->getMessage());
+    }
+}
+
+/**
+ * Obtener el ID del estado "Programado" o "Pendiente" para asignación automática
+ * @return int ID del estado por defecto para nuevos servicios
+ */
+public function ObtenerEstadoProgramadoPorDefecto(){
+    try{
+        $sql = "SELECT id_service_status FROM SERVICE_STATUS 
+                WHERE (LOWER(name_service_status) LIKE '%programado%' 
+                OR LOWER(name_service_status) LIKE '%pendiente%')
+                AND status = 1 
+                ORDER BY id_service_status ASC 
+                LIMIT 1";
+        
+        $consulta = $this->pdo->prepare($sql);
+        $consulta->execute();
+        $resultado = $consulta->fetch(PDO::FETCH_OBJ);
+        
+        if ($resultado) {
+            return (int)$resultado->id_service_status;
+        } else {
+            // Si no encuentra estado específico, devolver 1 como fallback
+            return 1;
+        }
+    }catch(Exception $e){
+        // En caso de error, devolver 1 como fallback
+        return 1;
+    }
+}
+
+/**
+ * Obtener servicios con información completa para la vista de tabla administrativa
+ * Versión corregida con LIMIT y OFFSET
+ */
+public function ObtenerServiciosTablaAdmin($filtros = [], $limit = 30, $offset = 0){
+    try{
+        $sql = "
+        SELECT DISTINCT
+            s.id_service,
+            s.notes,
+            s.preset_dt_hr,
+            s.start_dt_hr,
+            s.end_dt_hr,
+            s.customer_id_customer,
+            s.service_status_id_service_status,
+            c.name_customer,
+            c.address_customer,
+            c.whatsapp as customer_whatsapp,
+            ss.name_service_status
+        FROM SERVICE s
+        INNER JOIN CUSTOMER c ON s.customer_id_customer = c.id_customer
+        INNER JOIN SERVICE_STATUS ss ON s.service_status_id_service_status = ss.id_service_status
+        ";
+        
+        // Si hay filtro de empleado, necesitamos hacer JOIN con las tablas de empleados
+        if (!empty($filtros['empleado'])) {
+            $sql .= " INNER JOIN SRVIC_EMPLOYEE se ON s.id_service = se.service_id_service ";
+        }
+        
+        $condiciones = [];
+        $parametros = [];
+        
+        // Aplicar filtros
+        if (!empty($filtros['cliente'])) {
+            $condiciones[] = "s.customer_id_customer = ?";
+            $parametros[] = $filtros['cliente'];
+        }
+        
+        if (!empty($filtros['fecha_desde'])) {
+            $condiciones[] = "DATE(s.preset_dt_hr) >= ?";
+            $parametros[] = $filtros['fecha_desde'];
+        }
+        
+        if (!empty($filtros['fecha_hasta'])) {
+            $condiciones[] = "DATE(s.preset_dt_hr) <= ?";
+            $parametros[] = $filtros['fecha_hasta'];
+        }
+        
+        if (!empty($filtros['estado'])) {
+            $condiciones[] = "s.service_status_id_service_status = ?";
+            $parametros[] = $filtros['estado'];
+        }
+        
+        if (!empty($filtros['numero_servicio'])) {
+            $condiciones[] = "s.id_service = ?";
+            $parametros[] = $filtros['numero_servicio'];
+        }
+        
+        // CORREGIDO: Filtro por empleado
+        if (!empty($filtros['empleado'])) {
+            $condiciones[] = "se.employee_id_employee = ?";
+            $parametros[] = $filtros['empleado'];
+        }
+        
+        if (!empty($condiciones)) {
+            $sql .= " WHERE " . implode(" AND ", $condiciones);
+        }
+        
+        $sql .= " ORDER BY s.id_service DESC LIMIT " . (int)$limit . " OFFSET " . (int)$offset;
+        
+        $consulta = $this->pdo->prepare($sql);
+        $consulta->execute($parametros);
+        $servicios = $consulta->fetchAll(PDO::FETCH_OBJ);
+        
+        // Obtener información adicional para cada servicio
+        foreach ($servicios as $servicio) {
+            $servicio->tecnico_encargado = $this->obtenerTecnicoEncargado($servicio->id_service);
+            $servicio->tecnicos_asistentes = $this->obtenerTecnicosAsistentes($servicio->id_service);
+            $servicio->categorias_servicio = $this->obtenerCategoriasServicio($servicio->id_service);
+            $servicio->metodos_aplicacion = $this->obtenerMetodosAplicacion($servicio->id_service);
+            
+            $croquis_info = $this->verificarCroquis($servicio->id_service);
+            $servicio->tiene_croquis = $croquis_info['tiene_croquis'];
+            $servicio->ruta_croquis = $croquis_info['ruta_croquis'];
+        }
+        
+        return $servicios;
+        
+    }catch(Exception $e){
+        error_log("Error en ObtenerServiciosTablaAdmin: " . $e->getMessage());
+        return [];
+    }
+}
+
+/**
+ * Verificar si un servicio tiene croquis
+ */
+private function verificarCroquis($id_servicio){
+    try {
+        $sql = "SELECT COUNT(*) as tiene_croquis, 
+                       (SELECT path_file FROM SERVICE_FILE 
+                        WHERE service_id_service = ? AND file_type = 'PDF' 
+                        LIMIT 1) as ruta_croquis
+                FROM SERVICE_FILE 
+                WHERE service_id_service = ? AND file_type = 'PDF'";
+        
+        $consulta = $this->pdo->prepare($sql);
+        $consulta->execute([$id_servicio, $id_servicio]);
+        $resultado = $consulta->fetch(PDO::FETCH_OBJ);
+        
+        return [
+            'tiene_croquis' => $resultado ? (int)$resultado->tiene_croquis : 0,
+            'ruta_croquis' => $resultado ? $resultado->ruta_croquis : null
+        ];
+    } catch (Exception $e) {
+        return ['tiene_croquis' => 0, 'ruta_croquis' => null];
+    }
+}
+
+/**
+ * Obtener técnico encargado de un servicio
+ */
+private function obtenerTecnicoEncargado($id_servicio){
+    try {
+        $sql = "SELECT CONCAT(e.name_employee, ' ', e.lastname_employee) as nombre
+                FROM SRVIC_EMPLOYEE se 
+                INNER JOIN EMPLOYEE e ON se.employee_id_employee = e.id_employee
+                INNER JOIN ROLE_IN_SERVICE ris ON se.role_in_service_id_role_in_service = ris.id_role_in_service
+                WHERE se.service_id_service = ? 
+                AND LOWER(ris.name_role_in_service) LIKE '%encargado%'
+                LIMIT 1";
+        
+        $consulta = $this->pdo->prepare($sql);
+        $consulta->execute([$id_servicio]);
+        $resultado = $consulta->fetch(PDO::FETCH_OBJ);
+        
+        return $resultado ? $resultado->nombre : null;
+    } catch (Exception $e) {
+        return null;
+    }
+}
+
+/**
+ * Obtener técnicos asistentes de un servicio
+ */
+private function obtenerTecnicosAsistentes($id_servicio){
+    try {
+        $sql = "SELECT GROUP_CONCAT(CONCAT(e.name_employee, ' ', e.lastname_employee) SEPARATOR ', ') as nombres
+                FROM SRVIC_EMPLOYEE se 
+                INNER JOIN EMPLOYEE e ON se.employee_id_employee = e.id_employee
+                INNER JOIN ROLE_IN_SERVICE ris ON se.role_in_service_id_role_in_service = ris.id_role_in_service
+                WHERE se.service_id_service = ? 
+                AND LOWER(ris.name_role_in_service) LIKE '%asistente%'";
+        
+        $consulta = $this->pdo->prepare($sql);
+        $consulta->execute([$id_servicio]);
+        $resultado = $consulta->fetch(PDO::FETCH_OBJ);
+        
+        return $resultado ? $resultado->nombres : null;
+    } catch (Exception $e) {
+        return null;
+    }
+}
+
+/**
+ * Contar total de servicios para paginación
+ */
+public function ContarServiciosTablaAdmin($filtros = []){
+    try{
+        $sql = "
+        SELECT COUNT(DISTINCT s.id_service) as total
+        FROM SERVICE s
+        INNER JOIN CUSTOMER c ON s.customer_id_customer = c.id_customer
+        INNER JOIN SERVICE_STATUS ss ON s.service_status_id_service_status = ss.id_service_status
+        ";
+        
+        // Si hay filtro de empleado, agregar JOIN
+        if (!empty($filtros['empleado'])) {
+            $sql .= " INNER JOIN SRVIC_EMPLOYEE se ON s.id_service = se.service_id_service ";
+        }
+        
+        $condiciones = [];
+        $parametros = [];
+        
+        // Aplicar los mismos filtros
+        if (!empty($filtros['cliente'])) {
+            $condiciones[] = "s.customer_id_customer = ?";
+            $parametros[] = $filtros['cliente'];
+        }
+        
+        if (!empty($filtros['fecha_desde'])) {
+            $condiciones[] = "DATE(s.preset_dt_hr) >= ?";
+            $parametros[] = $filtros['fecha_desde'];
+        }
+        
+        if (!empty($filtros['fecha_hasta'])) {
+            $condiciones[] = "DATE(s.preset_dt_hr) <= ?";
+            $parametros[] = $filtros['fecha_hasta'];
+        }
+        
+        if (!empty($filtros['estado'])) {
+            $condiciones[] = "s.service_status_id_service_status = ?";
+            $parametros[] = $filtros['estado'];
+        }
+        
+        if (!empty($filtros['numero_servicio'])) {
+            $condiciones[] = "s.id_service = ?";
+            $parametros[] = $filtros['numero_servicio'];
+        }
+        
+        // CORREGIDO: Incluir filtro por empleado en el conteo
+        if (!empty($filtros['empleado'])) {
+            $condiciones[] = "se.employee_id_employee = ?";
+            $parametros[] = $filtros['empleado'];
+        }
+        
+        if (!empty($condiciones)) {
+            $sql .= " WHERE " . implode(" AND ", $condiciones);
+        }
+        
+        $consulta = $this->pdo->prepare($sql);
+        $consulta->execute($parametros);
+        $resultado = $consulta->fetch(PDO::FETCH_OBJ);
+        
+        return (int)$resultado->total;
+        
+    }catch(Exception $e){
+        error_log("Error al contar servicios: " . $e->getMessage());
+        return 0;
+    }
+}
+
+/**
+ * Verificar si un servicio tiene archivos PDF (croquis) asociados
+ * @param int $id_servicio ID del servicio
+ * @return array Información sobre los archivos PDF del servicio
+ */
+public function ObtenerArchivosPDFServicio($id_servicio){
+    try{
+        $sql = "SELECT * FROM SERVICE_FILE 
+                WHERE service_id_service = ? 
+                AND file_type = 'PDF' 
+                ORDER BY id_service_file DESC";
+        
+        $consulta = $this->pdo->prepare($sql);
+        $consulta->execute(array($id_servicio));
+        return $consulta->fetchAll(PDO::FETCH_OBJ);
+    }catch(Exception $e){
+        throw new Exception("Error al obtener archivos PDF del servicio: " . $e->getMessage());
     }
 }
 
