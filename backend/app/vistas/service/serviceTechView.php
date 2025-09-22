@@ -3,7 +3,7 @@
         <div class="container-fluid">
             <div class="row mb-2">
                 <div class="col-sm-6">
-                    <h1 class="m-0"><?= isset($titulo_pagina) ? $titulo_pagina : 'Panel de Servicios - Técnico' ?></h1>
+                    <h1 class="m-0"><?= isset($titulo_pagina) ? $titulo_pagina : 'Control de Servicios Asignados' ?></h1>
                 </div>
             </div>
         </div>
@@ -63,7 +63,7 @@
                         <div class="card-header">
                             <h3 class="card-title">
                                 <i class="fas fa-clipboard-list"></i>
-                                Panel de Servicios Técnico
+                                Control de Servicios Asignados
                             </h3>
                             <div class="card-tools">
                                 <button type="button" class="btn btn-tool" onclick="location.reload()">
@@ -180,7 +180,7 @@
                         </div>
                         
                         <!-- Botón de acción para iniciar servicio -->
-                        <a href="?c=service&a=IniciarServicio&id=<?= $servicio->id_service ?>&empleado=<?= isset($empleado_actual) ? $empleado_actual : '' ?>" 
+                        <a href="?c=service&a=IniciarServicio&id=<?= $servicio->id_service ?>" 
                            class="small-box-footer"
                            onclick="return confirm('¿Está seguro que desea iniciar este servicio? Se registrará automáticamente la fecha y hora de inicio.');">
                             <i class="fas fa-play"></i> Iniciar
@@ -290,7 +290,7 @@
                         </div>
                         
                         <!-- Botón de acción para continuar/finalizar servicio -->
-                        <a href="?c=service&a=ContinuarServicio&id=<?= $servicio->id_service ?>&empleado=<?= isset($empleado_actual) ? $empleado_actual : '' ?>" 
+                        <a href="?c=service&a=ContinuarServicio&id=<?= $servicio->id_service ?>" 
                            class="small-box-footer">
                             <i class="fas fa-arrow-right"></i> Continuar
                         </a>
@@ -322,7 +322,7 @@
                                         <i class="fas fa-sync"></i> Actualizar
                                     </button>
                                     <?php if (isset($empleado_actual) && $empleado_actual > 0): ?>
-                                    <a href="?c=service&a=ObtenerHistorialTecnico&empleado=<?= $empleado_actual ?>" class="btn btn-outline-secondary ml-2">
+                                    <a href="?c=service&a=ObtenerHistorialTecnico" class="btn btn-outline-secondary ml-2">
                                         <i class="fas fa-history"></i> Ver Historial
                                     </a>
                                     <?php endif; ?>
@@ -441,7 +441,7 @@
                             <span class="info-box-text">Historial</span>
                             <span class="info-box-number">
                                 <?php if (isset($empleado_actual) && $empleado_actual > 0): ?>
-                                <a href="?c=service&a=ObtenerHistorialTecnico&empleado=<?= $empleado_actual ?>" class="text-secondary">
+                                <a href="?c=service&a=ObtenerHistorialTecnico" class="text-secondary">
                                     Ver Todo
                                 </a>
                                 <?php else: ?>
@@ -517,7 +517,7 @@
                                             Menos de 1 hora
                                         <?php endif; ?>
                                     </h4>
-                                    <a href="?c=service&a=IniciarServicio&id=<?= $proximo_servicio->id_service ?>&empleado=<?= $empleado_actual ?>" 
+                                    <a href="?c=service&a=IniciarServicio&id=<?= $proximo_servicio->id_service ?>" 
                                        class="btn btn-success"
                                        onclick="return confirm('¿Está seguro que desea iniciar este servicio?');">
                                         <i class="fas fa-play"></i> Iniciar Ahora
@@ -544,18 +544,44 @@ setTimeout(function(){
 }, 300000); // 5 minutos
 
 // Función para confirmar inicio de servicio
-function confirmarInicioServicio(nombreCliente, idServicio, empleadoId) {
+function confirmarInicioServicio(nombreCliente, idServicio) {
     if (confirm('¿Está seguro que desea iniciar el servicio para ' + nombreCliente + '?\n\nSe registrará automáticamente la fecha y hora de inicio.')) {
-        window.location.href = '?c=service&a=IniciarServicio&id=' + idServicio + '&empleado=' + empleadoId;
+        window.location.href = '?c=service&a=IniciarServicio&id=' + idServicio;
     }
     return false;
 }
 
 // Función para confirmar continuación de servicio
-function confirmarContinuarServicio(nombreCliente, idServicio, empleadoId) {
+function confirmarContinuarServicio(nombreCliente, idServicio) {
     if (confirm('¿Desea continuar completando el servicio para ' + nombreCliente + '?')) {
-        window.location.href = '?c=service&a=ContinuarServicio&id=' + idServicio + '&empleado=' + empleadoId;
+        window.location.href = '?c=service&a=ContinuarServicio&id=' + idServicio;
     }
     return false;
 }
 </script>
+
+<!-- AGREGAR DEBUG INFO para identificar problemas de sesión -->
+<?php if (!isset($empleado_actual) || $empleado_actual <= 0): ?>
+<div class="alert alert-warning">
+    <h4><i class="fas fa-exclamation-triangle"></i> Problema de Identificación</h4>
+    <p>No se pudo obtener su ID de empleado automáticamente. Información de debug:</p>
+    <ul>
+        <li><strong>Estado de sesión:</strong> <?= session_status() == PHP_SESSION_ACTIVE ? 'Activa' : 'Inactiva' ?></li>
+        <li><strong>Variables de sesión disponibles:</strong> 
+            <?php 
+            if (isset($_SESSION) && !empty($_SESSION)) {
+                echo implode(', ', array_keys($_SESSION));
+            } else {
+                echo 'Ninguna';
+            }
+            ?>
+        </li>
+        <li><strong>GET empleado (fallback):</strong> <?= isset($_GET['empleado']) ? $_GET['empleado'] : 'No definido' ?></li>
+    </ul>
+    <div class="mt-2">
+        <a href="?c=auth&a=logout" class="btn btn-warning">
+            <i class="fas fa-sign-out-alt"></i> Cerrar Sesión e Intentar Nuevamente
+        </a>
+    </div>
+</div>
+<?php endif; ?>

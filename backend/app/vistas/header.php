@@ -1,3 +1,15 @@
+<?php
+require_once "app/controladores/base.controlador.php";
+
+// Verificar que el usuario esté logueado
+if (!isset($_SESSION['user'])) {
+    header("Location: ?c=auth");
+    exit();
+}
+
+$current_user = BaseControlador::getCurrentUser();
+$current_role = BaseControlador::getCurrentRole();
+?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -29,7 +41,7 @@
         <a class="nav-link" data-widget="pushmenu" href="#" role="button"><i class="fas fa-bars"></i></a>
       </li>
       <li class="nav-item d-none d-sm-inline-block">
-        <a href="index.php" class="nav-link">Inicio</a>
+        <a href="?c=inicio" class="nav-link">Inicio</a>
       </li>
     </ul>
 
@@ -64,11 +76,26 @@
         </button>
       </li>
 
-      <!-- Login Button (placeholder for future implementation) -->
-      <li class="nav-item">
-        <a class="nav-link" href="#" title="Iniciar Sesión">
-          <i class="fas fa-sign-in-alt"></i>
+      <!-- User Dropdown -->
+      <li class="nav-item dropdown">
+        <a class="nav-link" data-toggle="dropdown" href="#" title="<?php echo htmlspecialchars($current_user['name']); ?>">
+          <i class="fas fa-user"></i>
+          <span class="d-none d-md-inline"><?php echo htmlspecialchars($current_user['name']); ?></span>
         </a>
+        <div class="dropdown-menu dropdown-menu-lg dropdown-menu-right">
+          <span class="dropdown-item-text">
+            <strong><?php echo htmlspecialchars($current_user['name']); ?></strong><br>
+            <small class="text-muted"><?php echo htmlspecialchars($current_role['name_role']); ?></small>
+          </span>
+          <div class="dropdown-divider"></div>
+          <a href="?c=auth&a=ChangePassword" class="dropdown-item">
+            <i class="fas fa-key mr-2"></i> Cambiar Contraseña
+          </a>
+          <div class="dropdown-divider"></div>
+          <a href="?c=auth&a=Logout" class="dropdown-item">
+            <i class="fas fa-sign-out-alt mr-2"></i> Cerrar Sesión
+          </a>
+        </div>
       </li>
 
       <!-- Fullscreen Toggle -->
@@ -85,20 +112,22 @@
   <!-- Main Sidebar Container -->
   <aside class="main-sidebar sidebar-dark-primary elevation-4">
     <!-- Brand Logo -->
-    <a href="index.php" class="brand-link">
+    <a href="?c=inicio" class="brand-link">
       <img src="assets/dist/img/logolaceiba.png" alt="Logo La Ceiba" class="brand-image img-circle elevation-3" style="opacity: .8">
       <span class="brand-text font-weight-light">APP La Ceiba</span>
     </a>
 
     <!-- Sidebar -->
     <div class="sidebar">
-      <!-- Sidebar user panel (optional) -->
+      <!-- Sidebar user panel -->
       <div class="user-panel mt-3 pb-3 mb-3 d-flex">
         <div class="image">
-          <img src="assets/dist/img/user2-160x160.jpg" class="img-circle elevation-2" alt="User Image">
+          <img src="<?php echo !empty($current_user['image']) ? htmlspecialchars($current_user['image']) : 'assets/dist/img/user2-160x160.jpg'; ?>" 
+               class="img-circle elevation-2" alt="User Image">
         </div>
         <div class="info">
-          <a href="#" class="d-block">Administrador</a>
+          <a href="#" class="d-block"><?php echo htmlspecialchars($current_user['name']); ?></a>
+          <small class="text-muted"><?php echo htmlspecialchars($current_role['name_role']); ?></small>
         </div>
       </div>
 
@@ -115,142 +144,165 @@
       </div>
 
       <!-- Sidebar Menu -->
-<nav class="mt-2">
-  <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
-    
-    <!-- Menú Servicios -->
-    <li class="nav-item">
-      <a href="#" class="nav-link">
-        <i class="nav-icon fas fa-cogs"></i>
-        <p>
-          Servicios
-          <i class="right fas fa-angle-left"></i>
-        </p>
-      </a>
-      <ul class="nav nav-treeview">
-        <li class="nav-item">
-          <a href="?c=service&a=NuevoServicio" class="nav-link">
-            <i class="far fa-circle nav-icon"></i>
-            <p>Programar Servicio</p>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a href="?c=service" class="nav-link">
-            <i class="far fa-circle nav-icon"></i>
-            <p>Gestionar Por Estados</p>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a href="?c=service&a=VistaTablaAdmin" class="nav-link">
-            <i class="far fa-circle nav-icon"></i>
-            <p>Tabla de Gestión</p>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a href="?c=service&a=VistaTecnico" class="nav-link">
-            <i class="far fa-circle nav-icon"></i>
-            <p>Vista Técnicos</p>
-          </a>
-        </li>
+      <nav class="mt-2">
+        <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
+          
+          <?php if (BaseControlador::hasPermission('VIEW_ADMIN_PANEL')): ?>
+            <!-- Menú Servicios - Solo Administradores -->
+            <li class="nav-item">
+              <a href="#" class="nav-link">
+                <i class="nav-icon fas fa-cogs"></i>
+                <p>
+                  Servicios
+                  <i class="right fas fa-angle-left"></i>
+                </p>
+              </a>
+              <ul class="nav nav-treeview">
+                <li class="nav-item">
+                  <a href="?c=service&a=NuevoServicio" class="nav-link">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p>Programar Servicio</p>
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a href="?c=service" class="nav-link">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p>Gestionar Por Estados</p>
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a href="?c=service&a=VistaTablaAdmin" class="nav-link">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p>Tabla de Gestión</p>
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a href="?c=servicecategory" class="nav-link">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p>Categoría de Servicios</p>
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a href="?c=applicationmethod" class="nav-link">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p>Métodos de Aplicación</p>
+                  </a>
+                </li>
+              </ul>
+            </li>
 
-        <li class="nav-item">
-          <a href="?c=servicecategory" class="nav-link">
-            <i class="far fa-circle nav-icon"></i>
-            <p>Categoría de Servicios</p>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a href="?c=applicationmethod" class="nav-link">
-            <i class="far fa-circle nav-icon"></i>
-            <p>Métodos de Aplicación</p>
-          </a>
-        </li>
-      </ul>
-    </li>
+            <!-- Menú Clientes - Solo Administradores -->
+            <li class="nav-item">
+              <a href="#" class="nav-link">
+                <i class="nav-icon fas fa-users"></i>
+                <p>
+                  Clientes
+                  <i class="right fas fa-angle-left"></i>
+                </p>
+              </a>
+              <ul class="nav nav-treeview">
+                <li class="nav-item">
+                  <a href="?c=customer" class="nav-link">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p>Gestionar Clientes</p>
+                  </a>
+                </li>
+              </ul>
+            </li>
 
-    <!-- Menú Clientes -->
-    <li class="nav-item">
-      <a href="#" class="nav-link">
-        <i class="nav-icon fas fa-users"></i>
-        <p>
-          Clientes
-          <i class="right fas fa-angle-left"></i>
-        </p>
-      </a>
-      <ul class="nav nav-treeview">
-        <li class="nav-item">
-          <a href="?c=customer" class="nav-link">
-            <i class="far fa-circle nav-icon"></i>
-            <p>Gestionar Clientes</p>
-          </a>
-        </li>
-      </ul>
-    </li>
+            <!-- Menú Empleados - Solo Administradores -->
+            <li class="nav-item">
+              <a href="#" class="nav-link">
+                <i class="nav-icon fas fa-user-tie"></i>
+                <p>
+                  Empleados
+                  <i class="right fas fa-angle-left"></i>
+                </p>
+              </a>
+              <ul class="nav nav-treeview">
+                <li class="nav-item">
+                  <a href="?c=employee" class="nav-link">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p>Gestionar Empleados</p>
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a href="?c=useremployee" class="nav-link">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p>Usuarios Empleados</p>
+                  </a>
+                </li>
+              </ul>
+            </li>
 
-        <!-- Menú Empleados -->
-    <li class="nav-item">
-      <a href="#" class="nav-link">
-        <i class="nav-icon fas fa-user-tie"></i>
-        <p>
-          Empleados
-          <i class="right fas fa-angle-left"></i>
-        </p>
-      </a>
-      <ul class="nav nav-treeview">
-        <li class="nav-item">
-          <a href="?c=employee" class="nav-link">
-            <i class="far fa-circle nav-icon"></i>
-            <p>Gestionar Empleados</p>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a href="?c=useremployee" class="nav-link">
-            <i class="far fa-circle nav-icon"></i>
-            <p>Usuarios Empleados</p>
-          </a>
-        </li>
-      </ul>
-    </li>
+            <!-- Configuración - Solo Administradores -->
+            <li class="nav-item">
+              <a href="#" class="nav-link">
+                <i class="nav-icon fas fa-cog"></i>
+                <p>
+                  Configuración
+                  <i class="right fas fa-angle-left"></i>
+                </p>
+              </a>
+              <ul class="nav nav-treeview">
+                <li class="nav-item">
+                  <a href="?c=servicestatus" class="nav-link">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p>Estados de los Servicios</p>
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a href="?c=typedoc" class="nav-link">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p>Tipos de Documentos</p>
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a href="?c=roleemployee" class="nav-link">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p>Tipos de Empleados</p>
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a href="?c=roleinservice" class="nav-link">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p>Empleados en Servicio</p>
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a href="?c=permission" class="nav-link">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p>Gestión de Permisos</p>
+                  </a>
+                </li>
+              </ul>
+            </li>
+          <?php endif; ?>
 
-    <!-- Configuración -->
-    <li class="nav-item">
-      <a href="#" class="nav-link">
-        <i class="nav-icon fas fa-cog"></i>
-        <p>
-          Configuración
-          <i class="right fas fa-angle-left"></i>
-        </p>
-      </a>
-      <ul class="nav nav-treeview">
-        <li class="nav-item">
-          <a href="?c=servicestatus" class="nav-link">
-            <i class="far fa-circle nav-icon"></i>
-            <p>Estados de los Servicios</p>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a href="?c=typedoc" class="nav-link">
-            <i class="far fa-circle nav-icon"></i>
-            <p>Tipos de Documentos Aceptados</p>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a href="?c=roleemployee" class="nav-link">
-            <i class="far fa-circle nav-icon"></i>
-            <p>Tipos de Empleados</p>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a href="?c=roleinservice" class="nav-link">
-            <i class="far fa-circle nav-icon"></i>
-            <p>Empleados en Servicio</p>
-          </a>
-        </li>
-      </ul>
+          <?php if (BaseControlador::hasPermission('VIEW_TECHNICIAN_PANEL')): ?>
+            <!-- Menú para Técnicos -->
+            <li class="nav-item">
+              <a href="?c=service&a=VistaTecnico" class="nav-link">
+                <i class="nav-icon fas fa-tools"></i>
+                <p>Mis Servicios Asignados</p>
+              </a>
+            </li>
+          <?php endif; ?>
 
-  </ul>
-</nav>
-<!-- /.sidebar-menu -->
+          <!-- Separador -->
+          <li class="nav-header">SISTEMA</li>
+          
+          <!-- Enlace de Ayuda -->
+          <li class="nav-item">
+            <a href="#" class="nav-link">
+              <i class="nav-icon fas fa-question-circle"></i>
+              <p>Ayuda</p>
+            </a>
+          </li>
+
+        </ul>
+      </nav>
+      <!-- /.sidebar-menu -->
 
     </div>
     <!-- /.sidebar -->

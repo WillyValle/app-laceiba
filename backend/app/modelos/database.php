@@ -15,6 +15,11 @@ class BasedeDatos{
                 $pass
             );
             $conexion->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+            // AGREGAR: Configurar zona horaria de Guatemala
+            date_default_timezone_set('America/Guatemala');
+            $conexion->exec("SET time_zone = '-06:00'");
+            
             return $conexion;
         }catch(PDOException $e){
             echo "❌ Error de conexión: " . $e->getMessage();

@@ -1,4 +1,13 @@
 <?php
+// Verificación de permisos al inicio
+require_once "app/controladores/base.controlador.php";
+
+// Verificar que el usuario tenga permisos de administrador
+if (!BaseControlador::hasPermission('VIEW_ADMIN_PANEL')) {
+    header("Location: ?c=inicio");
+    exit();
+}
+
 // Obtener valores de filtros actuales para mantenerlos en el formulario
 $filtro_cliente = isset($_GET['cliente']) ? $_GET['cliente'] : '';
 $filtro_fecha_desde = isset($_GET['fecha_desde']) ? $_GET['fecha_desde'] : '';
@@ -160,9 +169,11 @@ $buscar_servicio = isset($_GET['buscar_servicio']) ? $_GET['buscar_servicio'] : 
                                 <a href="?c=service" class="btn btn-info">
                                     <i class="fas fa-th-large"></i> Vista Kanban
                                 </a>
+                                <?php if (BaseControlador::hasPermission('MANAGE_SERVICES')): ?>
                                 <a href="?c=service&a=NuevoServicio" class="btn btn-success">
                                     <i class="fas fa-plus"></i> Nuevo Servicio
                                 </a>
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>
@@ -362,7 +373,7 @@ $buscar_servicio = isset($_GET['buscar_servicio']) ? $_GET['buscar_servicio'] : 
                                         <br>
                                         
                                         <!-- Botón editar si está programado -->
-                                        <?php if ($servicio->service_status_id_service_status == 1): ?>
+                                        <?php if ($servicio->service_status_id_service_status == 1 && BaseControlador::hasPermission('MANAGE_SERVICES')): ?>
                                             <a href="?c=service&a=ReprogramarServicio&id=<?= $servicio->id_service ?>" 
                                                class="btn btn-sm btn-outline-warning" 
                                                title="Reprogramar">

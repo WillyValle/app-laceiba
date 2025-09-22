@@ -405,6 +405,7 @@
 
     </div><!-- /.container-fluid -->
 </section><!-- /.content -->
+                                </div>
 
 <!-- Estilos adicionales para mantener consistencia -->
 <style>

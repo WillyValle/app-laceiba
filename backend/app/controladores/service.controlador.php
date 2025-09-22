@@ -390,31 +390,31 @@ private function ValidarArchivoPDF($archivo, $id_servicio = null){
  */
 public function VistaTecnico(){
     try {
-        // TODO: Obtener el ID del empleado de la sesión
-        // Por ahora asumo que viene por GET, pero debería venir de la sesión del usuario logueado
-        $id_empleado = isset($_GET['empleado']) ? (int)$_GET['empleado'] : 0;
+        // NUEVO: Obtener el ID del empleado de la sesión automáticamente
+        $id_empleado = $this->obtenerIdEmpleadoDesdeLogin();
         
         if ($id_empleado <= 0) {
-            // Si no hay empleado especificado, mostrar error o redirigir
-            $errores = ["No se ha especificado un empleado válido"];
+            // Mostrar error específico si no se puede identificar al empleado
+            $errores = ["No se pudo identificar al empleado. Por favor, cierre sesión e inicie sesión nuevamente."];
             $servicios_programados = [];
             $servicios_iniciados = [];
+            $total_programados = 0;
+            $total_iniciados = 0;
+            $total_finalizados_mes = 0;
         } else {
-            // Obtener servicios programados asignados al empleado como encargado
+            // Obtener servicios normalmente
             $servicios_programados = $this->modelo->ObtenerServiciosProgramadosEmpleado($id_empleado);
-            
-            // ** NUEVO: Obtener servicios iniciados asignados al empleado **
             $servicios_iniciados = $this->modelo->ObtenerServiciosIniciadosEmpleado($id_empleado);
+            
+            // Obtener estadísticas
+            $total_programados = $this->modelo->ContarServiciosEmpleadoPorEstado($id_empleado, 1);
+            $total_iniciados = $this->modelo->ContarServiciosEmpleadoPorEstado($id_empleado, 2);
+            $total_finalizados_mes = $this->modelo->ContarServiciosEmpleadoPorEstado($id_empleado, 3);
         }
         
         // Variables para la vista
         $titulo_pagina = "Panel de Servicios - Técnico";
         $empleado_actual = $id_empleado;
-        
-        // ** NUEVO: Obtener estadísticas para el dashboard **
-        $total_programados = $this->modelo->ContarServiciosEmpleadoPorEstado($id_empleado, 1);
-        $total_iniciados = $this->modelo->ContarServiciosEmpleadoPorEstado($id_empleado, 2);
-        $total_finalizados_mes = $this->modelo->ContarServiciosEmpleadoPorEstado($id_empleado, 3);
         
         require_once "app/vistas/header.php";
         require_once "app/vistas/service/serviceTechView.php";
@@ -424,6 +424,10 @@ public function VistaTecnico(){
         $errores = ["Error al cargar los servicios: " . $e->getMessage()];
         $servicios_programados = [];
         $servicios_iniciados = [];
+        $total_programados = 0;
+        $total_iniciados = 0;
+        $total_finalizados_mes = 0;
+        $empleado_actual = 0;
         
         require_once "app/vistas/header.php";
         require_once "app/vistas/service/serviceTechView.php";
@@ -437,41 +441,35 @@ public function VistaTecnico(){
  */
 public function IniciarServicio(){
     try {
-        // Validar parámetros requeridos
         $id_servicio = isset($_GET['id']) ? (int)$_GET['id'] : 0;
         
-        // TODO: Obtener el ID del empleado de la sesión
-        // Por ahora asumo que viene por GET, pero debería venir de la sesión
-        $id_empleado = isset($_GET['empleado']) ? (int)$_GET['empleado'] : 0;
+        // NUEVO: Obtener empleado de la sesión
+        $id_empleado = $this->obtenerIdEmpleadoDesdeLogin();
         
         if ($id_servicio <= 0) {
             throw new Exception("ID de servicio no válido");
         }
         
         if ($id_empleado <= 0) {
-            throw new Exception("ID de empleado no válido");
+            throw new Exception("No se pudo identificar al empleado");
         }
         
-        // Validar que el empleado tenga permisos para iniciar este servicio
+        // Validar permisos y procesar
         if (!$this->modelo->ValidarEncargadoServicio($id_servicio, $id_empleado)) {
             throw new Exception("No tiene permisos para iniciar este servicio");
         }
         
-        // Intentar iniciar el servicio
         $resultado = $this->modelo->IniciarServicio($id_servicio, $id_empleado);
         
         if ($resultado) {
-            // Redirigir al formulario de completar servicio
-            header("location: ?c=service&a=CompletarServicio&id=" . $id_servicio . "&empleado=" . $id_empleado);
+            header("location: ?c=service&a=CompletarServicio&id=" . $id_servicio);
         } else {
             throw new Exception("No se pudo iniciar el servicio");
         }
         
     } catch (Exception $e) {
-        // En caso de error, redirigir de vuelta a la vista de técnico con mensaje de error
         $mensaje_error = urlencode($e->getMessage());
-        $empleado = isset($_GET['empleado']) ? (int)$_GET['empleado'] : 0;
-        header("location: ?c=service&a=VistaTecnico&empleado=" . $empleado . "&error=" . $mensaje_error);
+        header("location: ?c=service&a=VistaTecnico&error=" . $mensaje_error);
     }
 }
 
@@ -482,10 +480,16 @@ public function IniciarServicio(){
 public function CompletarServicio(){
     try {
         $id_servicio = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-        $id_empleado = isset($_GET['empleado']) ? (int)$_GET['empleado'] : 0;
+        
+        // NUEVO: Obtener empleado de la sesión
+        $id_empleado = $this->obtenerIdEmpleadoDesdeLogin();
         
         if ($id_servicio <= 0) {
             throw new Exception("ID de servicio no válido");
+        }
+        
+        if ($id_empleado <= 0) {
+            throw new Exception("No se pudo identificar al empleado");
         }
         
         // Obtener información completa del servicio
@@ -912,14 +916,16 @@ private function ValidarFormularioFinalizacion($datos){
 public function ContinuarServicio(){
     try {
         $id_servicio = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-        $id_empleado = isset($_GET['empleado']) ? (int)$_GET['empleado'] : 0;
+        
+        // NUEVO: Obtener empleado de la sesión
+        $id_empleado = $this->obtenerIdEmpleadoDesdeLogin();
         
         if ($id_servicio <= 0) {
             throw new Exception("ID de servicio no válido");
         }
         
         if ($id_empleado <= 0) {
-            throw new Exception("ID de empleado no válido");
+            throw new Exception("No se pudo identificar al empleado");
         }
         
         // Validar que el empleado tenga permisos para continuar este servicio
@@ -927,22 +933,26 @@ public function ContinuarServicio(){
             throw new Exception("No tiene permisos para continuar este servicio");
         }
         
-        // Validar que el servicio esté en estado "Iniciado" (estado 2)
+        // IMPORTANTE: Validar que el servicio esté en estado "Iniciado" (estado 2)
         $servicio = $this->modelo->ObtenerServicioParaFinalizacion($id_servicio);
-        if (!$servicio || $servicio->service_status_id_service_status != 2) {
-            throw new Exception("El servicio no está en estado de ejecución");
+        if (!$servicio) {
+            throw new Exception("Servicio no encontrado");
         }
         
-        // Redirigir al formulario de completar servicio
-        header("location: ?c=service&a=CompletarServicio&id=" . $id_servicio . "&empleado=" . $id_empleado);
+        if ($servicio->service_status_id_service_status != 2) {
+            throw new Exception("El servicio no está en estado de ejecución. Estado actual: " . 
+                              (isset($servicio->name_service_status) ? $servicio->name_service_status : 'Desconocido'));
+        }
+        
+        // Si todas las validaciones pasan, redirigir al formulario de completar servicio
+        header("location: ?c=service&a=CompletarServicio&id=" . $id_servicio);
         
     } catch (Exception $e) {
-        // En caso de error, redirigir de vuelta a la vista de técnico con mensaje de error
         $mensaje_error = urlencode($e->getMessage());
-        $empleado = isset($_GET['empleado']) ? (int)$_GET['empleado'] : 0;
-        header("location: ?c=service&a=VistaTecnico&empleado=" . $empleado . "&error=" . $mensaje_error);
+        header("location: ?c=service&a=VistaTecnico&error=" . $mensaje_error);
     }
 }
+
 
 /**
  * Mostrar formulario para reprogramar un servicio existente
@@ -1287,8 +1297,57 @@ public function SubirCroquis(){
     }
 }
 
+/**
+ * Obtener ID de empleado desde el sistema de login
+ */
+private function obtenerIdEmpleadoDesdeLogin(){
+    // Iniciar sesión si no está iniciada
+    if (session_status() == PHP_SESSION_NONE) {
+        session_start();
+    }
+    
+    // CORREGIDO: Basado en tu estructura real de sesión
+    if (isset($_SESSION['user']['id_employee']) && !empty($_SESSION['user']['id_employee'])) {
+        return (int)$_SESSION['user']['id_employee'];
+    }
+    
+    // Fallback adicionales para mayor compatibilidad
+    if (isset($_SESSION['user']['id_user']) && !empty($_SESSION['user']['id_user'])) {
+        // Si necesitas buscar por ID de usuario (pero con tu estructura actual no es necesario)
+        return $this->buscarEmpleadoPorUsuarioId($_SESSION['user']['id_user']);
+    }
+    
+    // Como fallback, si viene por GET (mantener compatibilidad)
+    if (isset($_GET['empleado']) && !empty($_GET['empleado'])) {
+        return (int)$_GET['empleado'];
+    }
+    
+    return 0;
+}
 
-
+/**
+ * Buscar empleado por ID de usuario del sistema de login
+ */
+private function buscarEmpleadoPorUsuarioId($id_usuario){
+    try {
+        // Basándome en tu estructura de USER_EMPLOYEE
+        $sql = "SELECT employee_id_employee 
+                FROM USER_EMPLOYEE 
+                WHERE id_user_employee = ? 
+                AND status = 1
+                LIMIT 1";
+        
+        $consulta = $this->modelo->pdo->prepare($sql);
+        $consulta->execute([$id_usuario]);
+        $resultado = $consulta->fetch(PDO::FETCH_OBJ);
+        
+        return $resultado ? (int)$resultado->employee_id_employee : 0;
+        
+    } catch (Exception $e) {
+        error_log("Error al buscar empleado por usuario: " . $e->getMessage());
+        return 0;
+    }
+}
 
 
 

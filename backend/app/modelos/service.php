@@ -747,15 +747,19 @@ public function IniciarServicio($id_servicio, $id_empleado){
             $id_estado_iniciado = $estado->id_service_status;
         }
         
+        $fecha_inicio_guatemala = new DateTime('now', new DateTimeZone('America/Guatemala'));
+        $fecha_inicio_formatted = $fecha_inicio_guatemala->format('Y-m-d H:i:s');
+        
         // Actualizar el servicio con la fecha/hora de inicio y nuevo estado
         $sql_actualizar = "
         UPDATE SERVICE 
-        SET start_dt_hr = NOW(),
+        SET start_dt_hr = :fecha_inicio,
             service_status_id_service_status = :nuevo_estado
         WHERE id_service = :id_servicio
         ";
         
         $consulta_actualizar = $this->pdo->prepare($sql_actualizar);
+        $consulta_actualizar->bindParam(':fecha_inicio', $fecha_inicio_formatted, PDO::PARAM_STR);
         $consulta_actualizar->bindParam(':nuevo_estado', $id_estado_iniciado, PDO::PARAM_INT);
         $consulta_actualizar->bindParam(':id_servicio', $id_servicio, PDO::PARAM_INT);
         $consulta_actualizar->execute();
@@ -1048,19 +1052,24 @@ public function FinalizarServicio($id_servicio, $datos_finalizacion){
         } else {
             $id_estado_finalizado = $estado->id_service_status;
         }
+
+        // Generar fecha de finalización con zona horaria de Guatemala
+        $fecha_fin_guatemala = new DateTime('now', new DateTimeZone('America/Guatemala'));
+        $fecha_fin_formatted = $fecha_fin_guatemala->format('Y-m-d H:i:s');
         
         // 2. Actualizar el servicio con fecha de finalización y estado
         $sql_service = "UPDATE SERVICE SET 
-                       end_dt_hr = NOW(),
-                       inspection_problems = ?,
-                       inspection_location = ?,
-                       inspection_methods = ?,
-                       notes = ?,
-                       service_status_id_service_status = ?
-                       WHERE id_service = ?";
+               end_dt_hr = ?,
+               inspection_problems = ?,
+               inspection_location = ?,
+               inspection_methods = ?,
+               notes = ?,
+               service_status_id_service_status = ?
+               WHERE id_service = ?";
         
         $consulta_service = $this->pdo->prepare($sql_service);
         $consulta_service->execute(array(
+            $fecha_fin_formatted,
             $datos_finalizacion['inspection_problems'],
             $datos_finalizacion['inspection_location'], 
             $datos_finalizacion['inspection_methods'],
