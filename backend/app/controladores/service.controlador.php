@@ -727,6 +727,38 @@ private function ProcesarFormularioFinalizacion($id_servicio){
                     $pdfController = new ServicePdfController($conexion);
                     $resultadoPdf = $pdfController->generateServicePdf($id_servicio);
                     
+                    if ($resultadoPdf['success']) {
+                        require_once __DIR__ . '/WhatsappController.php';
+                        
+                        $stmt = $conexion->prepare("
+                            SELECT c.WHATSAPP, c.ID_CUSTOMER 
+                            FROM CUSTOMER c 
+                            INNER JOIN SERVICE s ON s.CUSTOMER_ID_CUSTOMER = c.ID_CUSTOMER 
+                            WHERE s.ID_SERVICE = ?
+                        ");
+                        $stmt->execute([$id_servicio]);
+                        $customer = $stmt->fetch(PDO::FETCH_ASSOC);
+                        
+                        if ($customer && !empty($customer['WHATSAPP'])) {
+                            $fullPath = $resultadoPdf['file_path'];
+                            $relativePath = str_replace(__DIR__ . '/../../uploads/', '', $fullPath);
+                            $relativePath = str_replace('uploads/', '', $relativePath);
+
+                            $whatsappController = new WhatsappController();
+                            $whatsappResult = $whatsappController->sendServicePDF(
+                                $id_servicio,
+                                $customer['ID_CUSTOMER'],
+                                $customer['WHATSAPP'],
+                                $resultadoPdf['file_name'],
+                                $relativePath
+                            );
+                            
+                            if ($whatsappResult['success']) {
+                                error_log("✅ WhatsApp enviado a " . $customer['WHATSAPP']);
+                            }
+                        }
+                    }
+
                     if (!$resultadoPdf['success']) {
                         error_log("Error al generar PDF automático para servicio $id_servicio: " . $resultadoPdf['message']);
                     }

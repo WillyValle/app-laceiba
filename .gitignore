@@ -7,6 +7,7 @@ backend/vendor
 # Archivos de entorno externos
 .env_laceiba
 .env_laceiba_docker
+.env*
 
 # Docker volúmenes
 mysql_data
@@ -17,3 +18,26 @@ mysql_data
 
 # Directorio de archivos
 backend/uploads/
+!backend/uploads/.gitkeep
+
+# Backups
+*.sql
+*.sql.gz
+backup/
+
+# IDE
+.vscode/
+.idea/
+
+# System
+.DS_Store
+Thumbs.db
+
+#Baileys
+
+backend/baileys/.env
+backend/baileys/auth/*
+backend/baileys/logs/*
+backend/uploads/*
+!backend/uploads/.gitkeep
+*.log
