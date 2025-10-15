@@ -41,3 +41,6 @@ backend/baileys/logs/*
 backend/uploads/*
 !backend/uploads/.gitkeep
 *.log
+
+# Docker override (solo produccion)
+docker-compose.override.yml
