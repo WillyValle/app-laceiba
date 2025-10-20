@@ -728,7 +728,7 @@ private function ProcesarFormularioFinalizacion($id_servicio){
                     $resultadoPdf = $pdfController->generateServicePdf($id_servicio);
                     
                     if ($resultadoPdf['success']) {
-                        require_once __DIR__ . '/WhatsappController.php';
+                        require_once __DIR__ . '/whatsapp.controlador.php';
                         
                         $stmt = $conexion->prepare("
                             SELECT c.WHATSAPP, c.ID_CUSTOMER 
@@ -744,8 +744,8 @@ private function ProcesarFormularioFinalizacion($id_servicio){
                             $relativePath = str_replace(__DIR__ . '/../../uploads/', '', $fullPath);
                             $relativePath = str_replace('uploads/', '', $relativePath);
 
-                            $whatsappController = new WhatsappController();
-                            $whatsappResult = $whatsappController->sendServicePDF(
+                            $whatsappControlador = new WhatsappControlador();
+                            $whatsappResult = $whatsappControlador->sendServicePDF(
                                 $id_servicio,
                                 $customer['ID_CUSTOMER'],
                                 $customer['WHATSAPP'],

@@ -82,6 +82,49 @@ app.get('/qr', authMiddleware, (req, res) => {
     }
 });
 
+// Enviar mensaje de texto simple
+app.post('/send-message', authMiddleware, async (req, res) => {
+    const { phone, message } = req.body;
+
+    // Validaciones
+    if (!phone || !message) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing required fields',
+            required: ['phone', 'message']
+        });
+    }
+
+    try {
+        logger.info('Sending text message', { phone });
+
+        // Enviar mensaje por WhatsApp
+        const result = await whatsappService.sendMessage(phone, message);
+
+        logger.info('Message sent successfully', { 
+            messageId: result.messageId,
+            phone
+        });
+
+        res.json({
+            success: true,
+            message: 'Message sent successfully',
+            data: {
+                messageId: result.messageId,
+                phone
+            }
+        });
+
+    } catch (error) {
+        logger.error('Error sending message:', error);
+
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
 // Enviar PDF
 app.post('/send-pdf', authMiddleware, async (req, res) => {
     const { serviceId, customerId, phone, fileName, relativePath } = req.body;
@@ -260,6 +303,74 @@ app.post('/logout', authMiddleware, async (req, res) => {
     }
 });
 
+// Obtener logs del servicio
+app.get('/logs', authMiddleware, (req, res) => {
+    try {
+        const lines = parseInt(req.query.lines) || 50;
+        const logsPath = path.join(__dirname, '..', 'logs', 'baileys.log');
+        
+        if (!fs.existsSync(logsPath)) {
+            return res.json({
+                success: true,
+                logs: 'No logs available yet',
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        // Leer últimas N líneas del archivo
+        const content = fs.readFileSync(logsPath, 'utf-8');
+        const allLines = content.split('\n').filter(line => line.trim());
+        const lastLines = allLines.slice(-lines).join('\n');
+
+        res.json({
+            success: true,
+            logs: lastLines,
+            timestamp: new Date().toISOString()
+        });
+
+    } catch (error) {
+        logger.error('Error reading logs:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+// Stream de logs en tiempo real (opcional - para dashboard avanzado)
+app.get('/logs/stream', authMiddleware, (req, res) => {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    const logsPath = path.join(__dirname, '..', 'logs', 'baileys.log');
+    
+    // Enviar logs existentes
+    if (fs.existsSync(logsPath)) {
+        const content = fs.readFileSync(logsPath, 'utf-8');
+        const lines = content.split('\n').slice(-50).join('\n');
+        res.write(`data: ${JSON.stringify({ logs: lines })}\n\n`);
+    }
+
+    // Vigilar cambios en el archivo
+    const watcher = fs.watch(logsPath, (eventType) => {
+        if (eventType === 'change') {
+            try {
+                const content = fs.readFileSync(logsPath, 'utf-8');
+                const lines = content.split('\n').slice(-50).join('\n');
+                res.write(`data: ${JSON.stringify({ logs: lines })}\n\n`);
+            } catch (error) {
+                logger.error('Error in log stream:', error);
+            }
+        }
+    });
+
+    // Limpiar al cerrar conexión
+    req.on('close', () => {
+        watcher.close();
+    });
+});
+
 // ============================================
 // INICIALIZACIÓN
 // ============================================
@@ -303,5 +414,5 @@ process.on('SIGTERM', async () => {
     process.exit(0);
 });
 
-// Iniciar
+// Iniciar servidor
 startServer();

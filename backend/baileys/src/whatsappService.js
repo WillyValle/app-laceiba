@@ -110,6 +110,44 @@ class WhatsAppService {
         }
     }
 
+    /**
+     * Envía un mensaje de texto simple
+     */
+    async sendMessage(phone, message) {
+        try {
+            if (!this.isReady) {
+                throw new Error('WhatsApp service is not ready');
+            }
+
+            // Formatear número de teléfono
+            const formattedPhone = phone.includes('@s.whatsapp.net') 
+                ? phone 
+                : `${phone}@s.whatsapp.net`;
+
+            logger.info(`Sending message to ${phone}`);
+
+            // Enviar mensaje de texto
+            const result = await this.sock.sendMessage(formattedPhone, {
+                text: message
+            });
+
+            logger.info('Message sent successfully', { 
+                messageId: result.key.id,
+                phone 
+            });
+
+            return {
+                success: true,
+                messageId: result.key.id,
+                timestamp: result.messageTimestamp
+            };
+
+        } catch (error) {
+            logger.error('Error sending message:', error);
+            throw error;
+        }
+    }
+
     async sendDocument(phone, filePath, caption = '') {
         try {
             if (!this.isReady) {

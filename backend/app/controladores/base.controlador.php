@@ -84,4 +84,16 @@ class BaseControlador {
     public static function getCurrentRole() {
         return $_SESSION['role'] ?? null;
     }
+
+    /**
+     * Obtener conexión a la base de datos
+     */
+    protected function getConnection() {
+        global $conn;
+        
+        require_once __DIR__ . '/../modelos/database.php';
+        return BasedeDatos::Conectar();
+        
+        return $conn;
+    }
 }

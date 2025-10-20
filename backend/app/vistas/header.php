@@ -29,6 +29,8 @@ $current_role = BaseControlador::getCurrentRole();
   <link rel="stylesheet" href="assets/dist/css/inline-edit.css">
   <!-- Estilos para el theme switcher -->
   <link rel="stylesheet" href="assets/dist/css/theme-switcher.css">
+  <!-- QRCode.js para WhatsApp -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body class="hold-transition sidebar-mini theme-light">
 <div class="wrapper">
@@ -234,6 +236,33 @@ $current_role = BaseControlador::getCurrentRole();
                 </li>
               </ul>
             </li>
+
+            <!-- Menú WhatsApp - Solo Administradores -->
+            <?php if (BaseControlador::hasPermission('MANAGE_WHATSAPP')): ?>
+            <li class="nav-item">
+              <a href="#" class="nav-link">
+                <i class="nav-icon fab fa-whatsapp text-success"></i>
+                <p>
+                  WhatsApp
+                  <i class="right fas fa-angle-left"></i>
+                </p>
+              </a>
+              <ul class="nav nav-treeview">
+                <li class="nav-item">
+                  <a href="?c=whatsapp&a=Dashboard" class="nav-link">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p>Panel de Control</p>
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a href="?c=whatsapp&a=Logs" class="nav-link">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p>Historial de Envíos</p>
+                  </a>
+                </li>
+              </ul>
+            </li>
+            <?php endif; ?>
 
             <!-- Configuración - Solo Administradores -->
             <li class="nav-item">
