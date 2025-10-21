@@ -1804,5 +1804,222 @@ public function ObtenerArchivosPDFServicio($id_servicio){
     }
 }
 
+/**
+ * Obtener historial de servicios finalizados de un técnico específico
+ * Similar a ObtenerServiciosTablaAdmin pero filtrado por técnico y estado finalizado
+ * 
+ * @param array $filtros Filtros aplicados (empleado, fecha_desde, fecha_hasta, estado)
+ * @param int|null $limit Límite de registros (30 por defecto, null para todos)
+ * @param int $offset Desplazamiento para paginación
+ * @return array Lista de servicios del historial
+ */
+public function ObtenerHistorialTecnico($filtros = [], $limit = 30, $offset = 0){
+    try{
+        $sql = "
+        SELECT DISTINCT
+            s.id_service,
+            s.notes,
+            s.preset_dt_hr,
+            s.start_dt_hr,
+            s.end_dt_hr,
+            s.inspection_problems,
+            s.inspection_location,
+            s.inspection_methods,
+            s.customer_id_customer,
+            s.service_status_id_service_status,
+            c.name_customer,
+            c.address_customer,
+            ss.name_service_status
+        FROM SERVICE s
+        INNER JOIN CUSTOMER c ON s.customer_id_customer = c.id_customer
+        INNER JOIN SERVICE_STATUS ss ON s.service_status_id_service_status = ss.id_service_status
+        INNER JOIN SRVIC_EMPLOYEE se ON s.id_service = se.service_id_service
+        INNER JOIN ROLE_IN_SERVICE ris ON se.role_in_service_id_role_in_service = ris.id_role_in_service
+        ";
+        
+        $condiciones = [];
+        $parametros = [];
+        
+        // Filtro por empleado encargado (OBLIGATORIO para historial de técnico)
+        if (!empty($filtros['empleado'])) {
+            $condiciones[] = "se.employee_id_employee = ?";
+            $condiciones[] = "LOWER(ris.name_role_in_service) LIKE '%encargado%'";
+            $parametros[] = $filtros['empleado'];
+        }
+        
+        // Filtro por estado (típicamente estado 3 = Finalizado)
+        if (!empty($filtros['estado'])) {
+            $condiciones[] = "s.service_status_id_service_status = ?";
+            $parametros[] = $filtros['estado'];
+        }
+        
+        // Filtro por fecha desde
+        if (!empty($filtros['fecha_desde'])) {
+            $condiciones[] = "DATE(s.preset_dt_hr) >= ?";
+            $parametros[] = $filtros['fecha_desde'];
+        }
+        
+        // Filtro por fecha hasta
+        if (!empty($filtros['fecha_hasta'])) {
+            $condiciones[] = "DATE(s.preset_dt_hr) <= ?";
+            $parametros[] = $filtros['fecha_hasta'];
+        }
+
+        // Filtro por cliente
+        if (!empty($filtros['cliente'])) {
+            $condiciones[] = "s.customer_id_customer = ?";
+            $parametros[] = $filtros['cliente'];
+        }
+
+        // Filtro por ID de servicio
+        if (!empty($filtros['numero_servicio'])) {
+            $condiciones[] = "s.id_service = ?";
+            $parametros[] = $filtros['numero_servicio'];
+        }
+        
+        if (!empty($condiciones)) {
+            $sql .= " WHERE " . implode(" AND ", $condiciones);
+        }
+        
+        // Ordenar por fecha de finalización descendente (más recientes primero)
+        $sql .= " ORDER BY s.end_dt_hr DESC, s.id_service DESC";
+        
+        // Aplicar límite y offset si se especifican
+        if ($limit !== null) {
+            $sql .= " LIMIT " . (int)$limit . " OFFSET " . (int)$offset;
+        }
+        
+        $consulta = $this->pdo->prepare($sql);
+        $consulta->execute($parametros);
+        $servicios = $consulta->fetchAll(PDO::FETCH_OBJ);
+        
+        // Obtener información adicional para cada servicio
+        foreach ($servicios as $servicio) {
+            $servicio->tecnico_encargado = $this->obtenerTecnicoEncargado($servicio->id_service);
+            $servicio->tecnicos_asistentes = $this->obtenerTecnicosAsistentes($servicio->id_service);
+            $servicio->categorias_servicio = $this->obtenerCategoriasDeServicio($servicio->id_service);
+            $servicio->metodos_aplicacion = $this->ObtenerMetodosDeAplicacion($servicio->id_service);
+            
+            $croquis_info = $this->verificarCroquis($servicio->id_service);
+            $servicio->tiene_croquis = $croquis_info['tiene_croquis'];
+            $servicio->ruta_croquis = $croquis_info['ruta_croquis'];
+        }
+        
+        return $servicios;
+        
+    }catch(Exception $e){
+        error_log("Error en ObtenerHistorialTecnico: " . $e->getMessage());
+        return [];
+    }
+}
+
+/**
+ * Contar total de servicios en el historial del técnico para paginación
+ * 
+ * @param array $filtros Filtros aplicados (empleado, fecha_desde, fecha_hasta, estado)
+ * @return int Total de servicios que cumplen los filtros
+ */
+public function ContarHistorialTecnico($filtros = []){
+    try{
+        $sql = "
+        SELECT COUNT(DISTINCT s.id_service) as total
+        FROM SERVICE s
+        INNER JOIN CUSTOMER c ON s.customer_id_customer = c.id_customer
+        INNER JOIN SERVICE_STATUS ss ON s.service_status_id_service_status = ss.id_service_status
+        INNER JOIN SRVIC_EMPLOYEE se ON s.id_service = se.service_id_service
+        INNER JOIN ROLE_IN_SERVICE ris ON se.role_in_service_id_role_in_service = ris.id_role_in_service
+        ";
+        
+        $condiciones = [];
+        $parametros = [];
+        
+        // Filtro por empleado encargado
+        if (!empty($filtros['empleado'])) {
+            $condiciones[] = "se.employee_id_employee = ?";
+            $condiciones[] = "LOWER(ris.name_role_in_service) LIKE '%encargado%'";
+            $parametros[] = $filtros['empleado'];
+        }
+        
+        // Filtro por estado
+        if (!empty($filtros['estado'])) {
+            $condiciones[] = "s.service_status_id_service_status = ?";
+            $parametros[] = $filtros['estado'];
+        }
+        
+        // Filtro por fecha desde
+        if (!empty($filtros['fecha_desde'])) {
+            $condiciones[] = "DATE(s.preset_dt_hr) >= ?";
+            $parametros[] = $filtros['fecha_desde'];
+        }
+        
+        // Filtro por fecha hasta
+        if (!empty($filtros['fecha_hasta'])) {
+            $condiciones[] = "DATE(s.preset_dt_hr) <= ?";
+            $parametros[] = $filtros['fecha_hasta'];
+        }
+
+        // Filtro por cliente
+        if (!empty($filtros['cliente'])) {
+            $condiciones[] = "s.customer_id_customer = ?";
+            $parametros[] = $filtros['cliente'];
+        }
+
+        // Filtro por ID de servicio
+        if (!empty($filtros['numero_servicio'])) {
+            $condiciones[] = "s.id_service = ?";
+            $parametros[] = $filtros['numero_servicio'];
+        }
+        
+        if (!empty($condiciones)) {
+            $sql .= " WHERE " . implode(" AND ", $condiciones);
+        }
+        
+        $consulta = $this->pdo->prepare($sql);
+        $consulta->execute($parametros);
+        $resultado = $consulta->fetch(PDO::FETCH_OBJ);
+        
+        return (int)$resultado->total;
+        
+    }catch(Exception $e){
+        error_log("Error al contar historial de técnico: " . $e->getMessage());
+        return 0;
+    }
+}
+
+/**
+ * Obtener información completa de un empleado por su ID
+ * Útil para mostrar datos del técnico en reportes
+ * 
+ * @param int $id_empleado ID del empleado
+ * @return object|null Información del empleado
+ */
+public function ObtenerEmpleadoPorId($id_empleado){
+    try{
+        $sql = "SELECT 
+                    e.id_employee,
+                    e.name_employee,
+                    e.lastname_employee,
+                    CONCAT(e.name_employee, ' ', e.lastname_employee) as nombre_completo,
+                    e.phone_employee,
+                    e.email_employee,
+                    e.address_employee,
+                    e.status
+                FROM EMPLOYEE e
+                WHERE e.id_employee = ?
+                AND e.status = 1
+                LIMIT 1";
+        
+        $consulta = $this->pdo->prepare($sql);
+        $consulta->execute(array($id_empleado));
+        $resultado = $consulta->fetch(PDO::FETCH_OBJ);
+        
+        return $resultado;
+        
+    }catch(Exception $e){
+        error_log("Error al obtener empleado: " . $e->getMessage());
+        return null;
+    }
+}
+
 
 }

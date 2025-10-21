@@ -588,60 +588,120 @@ public function CompletarServicio(){
  */
 public function ObtenerHistorialTecnico(){
     try {
-        $id_empleado = isset($_GET['empleado']) ? (int)$_GET['empleado'] : 0;
-        $fecha_desde = isset($_GET['fecha_desde']) ? $_GET['fecha_desde'] : date('Y-m-01');
-        $fecha_hasta = isset($_GET['fecha_hasta']) ? $_GET['fecha_hasta'] : date('Y-m-t');
+        // Obtener ID del empleado desde sesión o GET
+        $id_empleado = $this->obtenerIdEmpleadoDesdeLogin();
         
         if ($id_empleado <= 0) {
-            throw new Exception("ID de empleado no válido");
+            throw new Exception("No se pudo identificar al técnico. Por favor, inicie sesión nuevamente.");
         }
         
-        // Obtener servicios históricos del empleado
-        $sql = "
-        SELECT DISTINCT
-            s.*,
-            c.name_customer,
-            c.address_customer,
-            ss.name_service_status,
-            CONCAT(e.name_employee, ' ', e.lastname_employee) as empleado_encargado
-        FROM SERVICE s
-        INNER JOIN CUSTOMER c ON s.customer_id_customer = c.id_customer
-        INNER JOIN SERVICE_STATUS ss ON s.service_status_id_service_status = ss.id_service_status
-        INNER JOIN SRVIC_EMPLOYEE se ON s.id_service = se.service_id_service
-        INNER JOIN EMPLOYEE e ON se.employee_id_employee = e.id_employee
-        INNER JOIN ROLE_IN_SERVICE ris ON se.role_in_service_id_role_in_service = ris.id_role_in_service
-        WHERE se.employee_id_employee = :id_empleado
-        AND LOWER(ris.name_role_in_service) LIKE '%encargado%'
-        AND DATE(s.preset_dt_hr) BETWEEN :fecha_desde AND :fecha_hasta
-        ORDER BY s.preset_dt_hr DESC
-        ";
+        // Obtener información del empleado para mostrar en la vista
+        $empleado_info = $this->modelo->ObtenerEmpleadoPorId($id_empleado);
+
+        // Obtener datos para filtros
+        $clientes = $this->modelo->ListarClientes();
         
-        $consulta = $this->pdo->prepare($sql);
-        $consulta->bindParam(':id_empleado', $id_empleado, PDO::PARAM_INT);
-        $consulta->bindParam(':fecha_desde', $fecha_desde, PDO::PARAM_STR);
-        $consulta->bindParam(':fecha_hasta', $fecha_hasta, PDO::PARAM_STR);
-        $consulta->execute();
+        // Procesar filtros de fecha
+        $filtros = $this->procesarFiltrosHistorial();
+        $filtros['empleado'] = $id_empleado; // Siempre filtrar por el técnico actual
+        $filtros['estado'] = 3; // Solo servicios finalizados (estado 3)
         
-        $historial_servicios = $consulta->fetchAll(PDO::FETCH_OBJ);
+        // Manejar paginación
+        $pagina_actual = isset($_GET['pagina']) ? max(1, (int)$_GET['pagina']) : 1;
+        $registros_por_pagina = 30;
+        $offset = ($pagina_actual - 1) * $registros_por_pagina;
+        
+        // Obtener servicios del historial
+        $historial_servicios = $this->modelo->ObtenerHistorialTecnico($filtros, $registros_por_pagina, $offset);
+        
+        // Obtener total de registros para paginación
+        $total_servicios = $this->modelo->ContarHistorialTecnico($filtros);
+        $total_paginas = ceil($total_servicios / $registros_por_pagina);
         
         // Variables para la vista
-        $titulo_pagina = "Historial de Servicios";
+        $titulo_pagina = "Mi Historial de Servicios Finalizados";
         $empleado_actual = $id_empleado;
         
         require_once "app/vistas/header.php";
-        require_once "app/vistas/service/serviceHistory.php"; // Vista que crearías después
+        require_once "app/vistas/service/serviceHistory.php";
         require_once "app/vistas/footer.php";
         
     } catch (Exception $e) {
         $errores = [$e->getMessage()];
         $historial_servicios = [];
-        $empleado_actual = isset($_GET['empleado']) ? (int)$_GET['empleado'] : 0;
+        $empleado_actual = 0;
+        $empleado_info = null;
+        $total_servicios = 0;
+        $total_paginas = 0;
+        $pagina_actual = 1;
         
         require_once "app/vistas/header.php";
         require_once "app/vistas/service/serviceHistory.php";
         require_once "app/vistas/footer.php";
     }
 }
+
+/**
+ * Procesar filtros específicos para el historial de técnicos
+ * @return array Filtros procesados
+ */
+private function procesarFiltrosHistorial(){
+    $filtros = [];
+    
+    // Filtro por fecha desde
+    if (isset($_GET['fecha_desde']) && !empty($_GET['fecha_desde'])) {
+        $filtros['fecha_desde'] = $_GET['fecha_desde'];
+    } else {
+        $filtros['fecha_desde'] = date('Y-m-01');
+    }
+    
+    // Filtro por fecha hasta
+    if (isset($_GET['fecha_hasta']) && !empty($_GET['fecha_hasta'])) {
+        $filtros['fecha_hasta'] = $_GET['fecha_hasta'];
+    } else {
+        $filtros['fecha_hasta'] = date('Y-m-t');
+    }
+    
+    // Filtro por cliente
+    if (isset($_GET['cliente']) && !empty($_GET['cliente'])) {
+        $filtros['cliente'] = (int)$_GET['cliente'];
+    }
+    
+    // Filtro por número de servicio
+    if (isset($_GET['numero_servicio']) && !empty($_GET['numero_servicio'])) {
+        $filtros['numero_servicio'] = (int)$_GET['numero_servicio'];
+    }
+    
+    return $filtros;
+}
+
+/**
+ * Construir URL para paginación del historial manteniendo filtros actuales
+ * @param int $pagina Número de página
+ * @return string URL completa con parámetros
+ */
+private function construirUrlPaginacionHistorial($pagina){
+    $params = [];
+    $params['c'] = 'service';
+    $params['a'] = 'ObtenerHistorialTecnico';
+    $params['pagina'] = $pagina;
+    
+    if (isset($_GET['fecha_desde']) && !empty($_GET['fecha_desde'])) {
+        $params['fecha_desde'] = $_GET['fecha_desde'];
+    }
+    if (isset($_GET['fecha_hasta']) && !empty($_GET['fecha_hasta'])) {
+        $params['fecha_hasta'] = $_GET['fecha_hasta'];
+    }
+    if (isset($_GET['cliente']) && !empty($_GET['cliente'])) {
+        $params['cliente'] = $_GET['cliente'];
+    }
+    if (isset($_GET['numero_servicio']) && !empty($_GET['numero_servicio'])) {
+        $params['numero_servicio'] = $_GET['numero_servicio'];
+    }
+    
+    return '?' . http_build_query($params);
+}
+
 
 //NUEVOS METODOS PARA FORMULARIO TECNICOS
 
