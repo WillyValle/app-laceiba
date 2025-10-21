@@ -87,17 +87,45 @@
       </div>
       <div class="row">
         <div class="col-md-4">
+
+          <!-- Campo WhatsApp con selector de país -->
           <div class="form-group">
-            <label for="whatsapp">WhatsApp</label>
-            <input 
-            type="tel" 
-            class="form-control" 
-            id="whatsapp" 
-            name="whatsapp" 
-            placeholder="Ej: +502 5500-0000"
-            maxlength="11"
-            value="<?php echo htmlspecialchars($datos->whatsapp ?? ''); ?>">
+            <label for="whatsapp_display">WhatsApp</label>
+            <div class="input-group">
+              <div class="input-group-prepend">
+                <select class="custom-select" id="country_code" name="country_code" style="max-width: 110px;">
+                  <option value="502" selected>🇬🇹 +502</option>
+                </select>
+              </div>
+              <input 
+                type="text" 
+                class="form-control" 
+                id="whatsapp_display" 
+                name="whatsapp_display" 
+                placeholder="Número de WhatsApp (8 dígitos)" 
+                pattern="[0-9]{8}" 
+                maxlength="8" 
+                required 
+                title="Ingrese exactamente 8 dígitos numéricos">
+            </div>
+            <!-- Campo oculto que PHP usará -->
+            <input type="hidden" id="whatsapp" name="whatsapp">
           </div>
+          <script>
+          document.addEventListener('DOMContentLoaded', function() {
+            const code = document.getElementById('country_code');
+            const number = document.getElementById('whatsapp_display');
+            const hidden = document.getElementById('whatsapp');
+            function updateWhatsapp() {
+              const clean = number.value.replace(/\D/g, '');
+              hidden.value = clean.length === 8 ? code.value + clean : '';
+            }
+            // Actualiza el valor concatenado cuando cambie el número o el código
+            code.addEventListener('change', updateWhatsapp);
+            number.addEventListener('input', updateWhatsapp);
+          });
+          </script>
+
         </div>
         <div class="col-md-4">
           <div class="form-group">
