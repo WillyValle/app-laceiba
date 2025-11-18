@@ -4,8 +4,10 @@ services:
     build: .
     ports:
       - "80:80"
+      - "443:443"
     volumes:
       - ./backend:/var/www/html
+      - ./uploads.ini:/usr/local/etc/php/conf.d/uploads.ini
     env_file:
       - .env_laceiba
       - .env_laceiba_docker
