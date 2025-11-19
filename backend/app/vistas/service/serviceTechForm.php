@@ -462,3 +462,133 @@
     margin: 0;
 }
 </style>
+
+<!-- Script de optimización de imágenes -->
+<!-- Script de optimización de imágenes -->
+<script>
+/**
+ * Inicialización del optimizador de imágenes
+ * Comprime imágenes en el cliente antes de subirlas al servidor
+ * Mejora significativamente el tiempo de carga y reduce uso de ancho de banda
+ */
+window.addEventListener('load', function() {
+    // Cargar el script de optimización dinámicamente
+    var script = document.createElement('script');
+    script.src = 'assets/js/image-upload-optimizer.js';
+    
+    script.onload = function() {
+        // Verificar que jQuery y el plugin están disponibles
+        if (typeof $ !== 'undefined' && typeof $.fn.imageUploadOptimizer !== 'undefined') {
+            // Inicializar optimizador en el formulario de finalización
+            $('#formFinalizarServicio').imageUploadOptimizer({
+                maxWidth: 1920,           // Ancho máximo de imagen (px)
+                maxHeight: 1920,          // Alto máximo de imagen (px)
+                quality: 0.85,            // Calidad de compresión JPEG (0.0 - 1.0)
+                                          // 0.70 = más compresión, 0.95 = mejor calidad
+                maxFileSize: 50 * 1024 * 1024,  // Tamaño máximo por archivo (50MB)
+                showPreview: true,        // Mostrar preview de imágenes seleccionadas
+                useToastr: true           // Usar notificaciones de AdminLTE (Toastr)
+            });
+            
+            // Solo en desarrollo - comentar en producción si no se necesita
+            // console.log('✓ Optimizador de imágenes iniciado');
+        }
+    };
+    
+    // En caso de error al cargar el script (opcional, solo para debugging)
+    // script.onerror = function() {
+    //     console.error('Error: No se pudo cargar image-upload-optimizer.js');
+    // };
+    
+    document.body.appendChild(script);
+});
+</script>
+
+<!-- Estilos adicionales para el preview (usa clases de AdminLTE) -->
+<style>
+.image-preview-container {
+    animation: fadeIn 0.3s;
+}
+
+.image-preview-container .card {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.image-preview-container .card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.compression-progress {
+    margin: 15px 0;
+    animation: fadeIn 0.3s;
+}
+
+.compression-progress .progress {
+    height: 25px;
+    background-color: #e9ecef;
+    border-radius: 0.25rem;
+    overflow: hidden;
+}
+
+.compression-progress .progress-bar {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    color: #fff;
+    text-align: center;
+    white-space: nowrap;
+    transition: width 0.6s ease;
+    font-weight: 600;
+}
+
+.compression-progress .progress-info {
+    margin-top: 5px;
+    font-size: 0.875rem;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Sobrescribir estilos si es necesario */
+.image-preview-row {
+    margin: 0 -7.5px;
+}
+
+.image-preview-row > div {
+    padding: 0 7.5px;
+}
+</style>
+
+<!-- Notificación de carga inicial -->
+<script>
+// Configuración de Toastr si está disponible
+if (typeof toastr !== 'undefined') {
+    toastr.options = {
+        "closeButton": true,
+        "debug": false,
+        "newestOnTop": true,
+        "progressBar": true,
+        "positionClass": "toast-top-right",
+        "preventDuplicates": true,
+        "onclick": null,
+        "showDuration": "300",
+        "hideDuration": "1000",
+        "timeOut": "5000",
+        "extendedTimeOut": "1000",
+        "showEasing": "swing",
+        "hideEasing": "linear",
+        "showMethod": "fadeIn",
+        "hideMethod": "fadeOut"
+    };
+}
+</script>
+</style>

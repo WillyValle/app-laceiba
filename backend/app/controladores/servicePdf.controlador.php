@@ -4,6 +4,7 @@ require_once 'tcpdf/tcpdf.php';
 // require_once 'tcpdf/tcpdf.php';
 
 require_once 'app/modelos/servicePdf.php';
+require_once 'app/helpers/ImageOptimizer.php';
 
 /**
  * Controlador para generar PDFs de servicios de fumigación
@@ -437,7 +438,8 @@ class ServicePdfController {
  * @param string $fileName Nombre del archivo
  * @return string HTML con imagen embebida
  */
-private function embedImageInPdf($imagePath, $fileName) {
+
+    private function embedImageInPdf($imagePath, $fileName) {
     $html = '';
     
     try {
@@ -452,11 +454,30 @@ private function embedImageInPdf($imagePath, $fileName) {
             return '<div class="list-item">• [ARCHIVO] ' . htmlspecialchars($fileName) . ' (formato no válido)</div>';
         }
         
-        // Obtener dimensiones originales
+        // NUEVO: Crear versión optimizada para PDF en directorio temporal
+        $tempDir = sys_get_temp_dir() . '/pdf_images/';
+        if (!is_dir($tempDir)) {
+            mkdir($tempDir, 0755, true);
+        }
+        
+        $tempImagePath = $tempDir . uniqid('pdf_img_') . '.jpg';
+        
+        // Optimizar imagen específicamente para PDF (más agresivo)
+        // Esto reduce drásticamente el uso de memoria
+        $optimized = ImageOptimizer::optimizeForPdf($imagePath, $tempImagePath);
+        
+        if (!$optimized) {
+            error_log("No se pudo optimizar imagen para PDF: " . $imagePath);
+            // Si falla, intentar con la original (puede causar error de memoria)
+            $tempImagePath = $imagePath;
+        }
+        
+        // Obtener dimensiones de la imagen optimizada
+        $imageInfo = getimagesize($tempImagePath);
         $originalWidth = $imageInfo[0];
         $originalHeight = $imageInfo[1];
         
-        // Calcular nuevas dimensiones manteniendo proporción
+        // Calcular dimensiones para el PDF
         $maxWidth = 400; // Ancho máximo en píxeles
         $maxHeight = 300; // Alto máximo en píxeles
         
@@ -469,10 +490,15 @@ private function embedImageInPdf($imagePath, $fileName) {
             $newHeight = $originalHeight;
         }
         
-        // Convertir imagen a base64
-        $imageData = file_get_contents($imagePath);
+        // Convertir imagen optimizada a base64
+        $imageData = file_get_contents($tempImagePath);
         $base64 = base64_encode($imageData);
-        $mimeType = $imageInfo['mime'];
+        $mimeType = 'image/jpeg'; // Siempre JPEG después de optimización
+        
+        // Limpiar archivo temporal si se creó
+        if ($optimized && $tempImagePath !== $imagePath) {
+            @unlink($tempImagePath);
+        }
         
         // Generar HTML con imagen embebida
         $html .= '
@@ -485,12 +511,38 @@ private function embedImageInPdf($imagePath, $fileName) {
             </div>
         </div>';
         
+        // Limpiar memoria
+        unset($imageData);
+        unset($base64);
+        
     } catch (Exception $e) {
         error_log("Error al embeber imagen en PDF: " . $e->getMessage());
         $html = '<div class="list-item">• [IMAGEN] ' . htmlspecialchars($fileName) . ' (error al procesar)</div>';
     }
     
     return $html;
+}
+
+/**
+ * Limpiar imágenes temporales del directorio de PDFs
+ * Llamar periódicamente para liberar espacio
+ */
+public function cleanTempPdfImages() {
+    $tempDir = sys_get_temp_dir() . '/pdf_images/';
+    
+    if (!is_dir($tempDir)) {
+        return;
+    }
+    
+    $files = glob($tempDir . 'pdf_img_*');
+    $now = time();
+    
+    foreach ($files as $file) {
+        // Eliminar archivos más antiguos de 1 hora
+        if (is_file($file) && ($now - filemtime($file)) > 3600) {
+            @unlink($file);
+        }
+    }
 }
 
 

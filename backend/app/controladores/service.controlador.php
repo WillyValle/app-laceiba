@@ -1,5 +1,6 @@
 <?php
 require_once "app/modelos/service.php";
+require_once "app/helpers/ImageOptimizer.php";
 
 class ServiceControlador{
     private $modelo;
@@ -845,6 +846,7 @@ private function ProcesarFormularioFinalizacion($id_servicio){
  * @param array $archivos_imagenes Array de archivos de $_FILES
  * @return array Resultado del procesamiento con rutas de imágenes
  */
+
 private function ProcesarImagenesServicio($id_servicio, $archivos_imagenes){
     $resultado = ['success' => false, 'errores' => [], 'rutas' => []];
     
@@ -863,11 +865,11 @@ private function ProcesarImagenesServicio($id_servicio, $archivos_imagenes){
         }
         
         // Tipos de imagen permitidos
-        $tipos_permitidos = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
-        $extensiones_permitidas = ['jpg', 'jpeg', 'png', 'gif'];
+        $tipos_permitidos = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        $extensiones_permitidas = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
         
-        // Tamaño máximo por imagen (10MB)
-        $tamaño_maximo = 10 * 1024 * 1024;
+        // Tamaño máximo por imagen (50MB - ya viene comprimida del cliente)
+        $tamaño_maximo = 50 * 1024 * 1024;
         
         $rutas_guardadas = [];
         $total_archivos = count($archivos_imagenes['name']);
@@ -908,7 +910,7 @@ private function ProcesarImagenesServicio($id_servicio, $archivos_imagenes){
             finfo_close($finfo);
             
             if (!in_array($tipo_mime, $tipos_permitidos)) {
-                $resultado['errores'][] = "Imagen " . ($i + 1) . " no es un tipo válido. Solo JPG, PNG y GIF";
+                $resultado['errores'][] = "Imagen " . ($i + 1) . " no es un tipo válido. Solo JPG, PNG, GIF y WEBP";
                 continue;
             }
             
@@ -930,10 +932,27 @@ private function ProcesarImagenesServicio($id_servicio, $archivos_imagenes){
             $nombre_archivo = uniqid('img_') . '_' . date('Y-m-d_H-i-s') . '_' . $i . '.' . $extension;
             $ruta_completa = $directorio_imagenes . $nombre_archivo;
             
-            // Mover archivo
+            // Mover archivo temporal
             if (move_uploaded_file($archivos_imagenes['tmp_name'][$i], $ruta_completa)) {
                 chmod($ruta_completa, 0666);
-                $rutas_guardadas[] = $ruta_completa;
+                
+                // NUEVO: Optimizar la imagen después de guardarla
+                // Esto reduce el tamaño sin pérdida significativa de calidad
+                $optimizado = ImageOptimizer::optimizeImage(
+                    $ruta_completa,  // Ruta de origen
+                    null,            // Sobrescribir el mismo archivo
+                    1920,            // Ancho máximo
+                    1920,            // Alto máximo
+                    85               // Calidad (85 = excelente calidad, buen tamaño)
+                );
+                
+                if ($optimizado) {
+                    $rutas_guardadas[] = $ruta_completa;
+                } else {
+                    // Si falla la optimización, mantener el original
+                    error_log("No se pudo optimizar la imagen: " . $ruta_completa);
+                    $rutas_guardadas[] = $ruta_completa;
+                }
             } else {
                 $resultado['errores'][] = "Error al guardar imagen " . ($i + 1);
             }
@@ -947,7 +966,7 @@ private function ProcesarImagenesServicio($id_servicio, $archivos_imagenes){
         
         // Información de debug
         if (!empty($rutas_guardadas)) {
-            $resultado['mensaje'] = "Se guardaron " . count($rutas_guardadas) . " imagen(es) en: " . $directorio_imagenes;
+            $resultado['mensaje'] = "Se guardaron " . count($rutas_guardadas) . " imagen(es) optimizada(s) en: " . $directorio_imagenes;
         }
         
     } catch (Exception $e) {
@@ -956,6 +975,7 @@ private function ProcesarImagenesServicio($id_servicio, $archivos_imagenes){
     
     return $resultado;
 }
+
 
 /**
  * Método auxiliar para validar formulario de finalización
