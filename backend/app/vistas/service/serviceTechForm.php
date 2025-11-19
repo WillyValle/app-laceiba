@@ -486,7 +486,7 @@ window.addEventListener('load', function() {
                 quality: 0.85,            // Calidad de compresión JPEG (0.0 - 1.0)
                                           // 0.70 = más compresión, 0.95 = mejor calidad
                 maxFileSize: 50 * 1024 * 1024,  // Tamaño máximo por archivo (50MB)
-                showPreview: true,        // Mostrar preview de imágenes seleccionadas
+                showPreview: false,        // Mostrar preview de imágenes seleccionadas
                 useToastr: true           // Usar notificaciones de AdminLTE (Toastr)
             });
             
