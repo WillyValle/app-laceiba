@@ -148,11 +148,23 @@
                                 <?= htmlspecialchars($servicio->address_customer) ?>
                             </p>
                             
-                            <!-- Encargado -->
+                            <!-- Encargado con Rol -->
                             <p class="text-white mb-1">
                                 <i class="fas fa-user-tie"></i>
                                 <strong>Encargado:</strong> 
                                 <?= htmlspecialchars($servicio->empleado_encargado) ?>
+                                
+                                <?php if (isset($servicio->rol_tecnico)): ?>
+                                    <?php 
+                                    $es_encargado = stripos($servicio->rol_tecnico, 'encargado') !== false;
+                                    $badge_class = $es_encargado ? 'badge-primary' : 'badge-info';
+                                    $badge_icon = $es_encargado ? 'fas fa-star' : 'fas fa-hands-helping';
+                                    ?>
+                                    <span class="badge <?= $badge_class ?> ml-2">
+                                        <i class="<?= $badge_icon ?>"></i>
+                                        <?= htmlspecialchars($servicio->rol_tecnico) ?>
+                                    </span>
+                                <?php endif; ?>
                             </p>
                             
                             <!-- Información adicional -->
@@ -245,11 +257,23 @@
                                 <?= htmlspecialchars($servicio->address_customer) ?>
                             </p>
                             
-                            <!-- Encargado -->
+                            <!-- Encargado con Rol -->
                             <p class="text-white mb-1">
                                 <i class="fas fa-user-tie"></i>
                                 <strong>Encargado:</strong> 
                                 <?= htmlspecialchars($servicio->empleado_encargado) ?>
+                                
+                                <?php if (isset($servicio->rol_tecnico)): ?>
+                                    <?php 
+                                    $es_encargado = stripos($servicio->rol_tecnico, 'encargado') !== false;
+                                    $badge_class = $es_encargado ? 'badge-primary' : 'badge-info';
+                                    $badge_icon = $es_encargado ? 'fas fa-star' : 'fas fa-hands-helping';
+                                    ?>
+                                    <span class="badge <?= $badge_class ?> ml-2">
+                                        <i class="<?= $badge_icon ?>"></i>
+                                        <?= htmlspecialchars($servicio->rol_tecnico) ?>
+                                    </span>
+                                <?php endif; ?>
                             </p>
                             
                             <!-- Información adicional -->

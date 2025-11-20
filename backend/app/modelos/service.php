@@ -674,7 +674,8 @@ public function ObtenerServiciosProgramadosEmpleado($id_empleado){
             c.tel as customer_tel,
             s.service_status_id_service_status,
             ss.name_service_status,
-            CONCAT(e_enc.name_employee, ' ', e_enc.lastname_employee) as empleado_encargado
+            CONCAT(e_enc.name_employee, ' ', e_enc.lastname_employee) as empleado_encargado,
+            ris.name_role_in_service as rol_tecnico
         FROM SERVICE s
         INNER JOIN CUSTOMER c ON s.customer_id_customer = c.id_customer
         INNER JOIN SERVICE_STATUS ss ON s.service_status_id_service_status = ss.id_service_status
@@ -682,7 +683,10 @@ public function ObtenerServiciosProgramadosEmpleado($id_empleado){
         INNER JOIN EMPLOYEE e_enc ON se.employee_id_employee = e_enc.id_employee
         INNER JOIN ROLE_IN_SERVICE ris ON se.role_in_service_id_role_in_service = ris.id_role_in_service
         WHERE se.employee_id_employee = :id_empleado
-        AND LOWER(ris.name_role_in_service) LIKE '%encargado%'
+        AND (
+            LOWER(ris.name_role_in_service) LIKE '%encargado%'
+            OR LOWER(ris.name_role_in_service) LIKE '%asistente%'
+        )
         AND s.service_status_id_service_status = 1
         AND s.preset_dt_hr >= CURDATE()
         ORDER BY s.preset_dt_hr ASC
@@ -707,15 +711,18 @@ public function IniciarServicio($id_servicio, $id_empleado){
     try{
         $this->pdo->beginTransaction();
         
-        // Primero validar que el empleado sea el encargado del servicio
+        // Validar que el empleado esté asignado al servicio (encargado o asistente)
         $sql_validar = "
-        SELECT COUNT(*) as es_encargado
+        SELECT COUNT(*) as esta_asignado
         FROM SERVICE s
         INNER JOIN SRVIC_EMPLOYEE se ON s.id_service = se.service_id_service
         INNER JOIN ROLE_IN_SERVICE ris ON se.role_in_service_id_role_in_service = ris.id_role_in_service
         WHERE s.id_service = :id_servicio
         AND se.employee_id_employee = :id_empleado
-        AND LOWER(ris.name_role_in_service) LIKE '%encargado%'
+        AND (
+            LOWER(ris.name_role_in_service) LIKE '%encargado%'
+            OR LOWER(ris.name_role_in_service) LIKE '%asistente%'
+        )
         AND s.service_status_id_service_status = 1
         ";
         
@@ -726,7 +733,7 @@ public function IniciarServicio($id_servicio, $id_empleado){
         
         $validacion = $consulta_validar->fetch(PDO::FETCH_OBJ);
         
-        if ($validacion->es_encargado == 0) {
+        if ($validacion->esta_asignado == 0) {
             throw new Exception("El empleado no está autorizado para iniciar este servicio o el servicio no está en estado programado");
         }
         
@@ -777,21 +784,26 @@ public function IniciarServicio($id_servicio, $id_empleado){
 }
 
 /**
- * Validar si un empleado es encargado de un servicio específico
+ * Validar que un empleado esté asignado al servicio (como encargado O asistente)
+ * Modificado para permitir que tanto encargados como asistentes puedan iniciar y completar servicios
+ * 
  * @param int $id_servicio ID del servicio
- * @param int $id_empleado ID del empleado
- * @return bool True si es encargado, False en caso contrario
+ * @param int $id_empleado ID del empleado a validar
+ * @return bool True si el empleado está asignado (encargado o asistente), False en caso contrario
  */
 public function ValidarEncargadoServicio($id_servicio, $id_empleado){
     try{
         $sql = "
-        SELECT COUNT(*) as es_encargado
+        SELECT COUNT(*) as esta_asignado
         FROM SERVICE s
         INNER JOIN SRVIC_EMPLOYEE se ON s.id_service = se.service_id_service
         INNER JOIN ROLE_IN_SERVICE ris ON se.role_in_service_id_role_in_service = ris.id_role_in_service
         WHERE s.id_service = :id_servicio
         AND se.employee_id_employee = :id_empleado
-        AND LOWER(ris.name_role_in_service) LIKE '%encargado%'
+        AND (
+            LOWER(ris.name_role_in_service) LIKE '%encargado%' 
+            OR LOWER(ris.name_role_in_service) LIKE '%asistente%'
+        )
         ";
         
         $consulta = $this->pdo->prepare($sql);
@@ -800,7 +812,7 @@ public function ValidarEncargadoServicio($id_servicio, $id_empleado){
         $consulta->execute();
         
         $resultado = $consulta->fetch(PDO::FETCH_OBJ);
-        return $resultado->es_encargado > 0;
+        return $resultado->esta_asignado > 0;
     }catch(Exception $e){
         return false;
     }
@@ -1269,6 +1281,7 @@ public function ObtenerServiciosIniciadosEmpleado($id_empleado){
             s.service_status_id_service_status,
             ss.name_service_status,
             CONCAT(e_enc.name_employee, ' ', e_enc.lastname_employee) as empleado_encargado,
+            ris.name_role_in_service as rol_tecnico,
             -- Calcular tiempo transcurrido desde el inicio
             TIMESTAMPDIFF(MINUTE, s.start_dt_hr, NOW()) as minutos_transcurridos
         FROM SERVICE s
@@ -1278,7 +1291,10 @@ public function ObtenerServiciosIniciadosEmpleado($id_empleado){
         INNER JOIN EMPLOYEE e_enc ON se.employee_id_employee = e_enc.id_employee
         INNER JOIN ROLE_IN_SERVICE ris ON se.role_in_service_id_role_in_service = ris.id_role_in_service
         WHERE se.employee_id_employee = :id_empleado
-        AND LOWER(ris.name_role_in_service) LIKE '%encargado%'
+        AND (
+            LOWER(ris.name_role_in_service) LIKE '%encargado%'
+            OR LOWER(ris.name_role_in_service) LIKE '%asistente%'
+        )
         AND s.service_status_id_service_status = 2
         AND s.start_dt_hr IS NOT NULL
         AND s.end_dt_hr IS NULL
@@ -1309,7 +1325,10 @@ public function ContarServiciosEmpleadoPorEstado($id_empleado, $estado_servicio)
         INNER JOIN SRVIC_EMPLOYEE se ON s.id_service = se.service_id_service
         INNER JOIN ROLE_IN_SERVICE ris ON se.role_in_service_id_role_in_service = ris.id_role_in_service
         WHERE se.employee_id_employee = :id_empleado
-        AND LOWER(ris.name_role_in_service) LIKE '%encargado%'
+        AND (
+            LOWER(ris.name_role_in_service) LIKE '%encargado%'
+            OR LOWER(ris.name_role_in_service) LIKE '%asistente%'
+        )
         AND s.service_status_id_service_status = :estado_servicio
         ";
         
