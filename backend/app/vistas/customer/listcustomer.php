@@ -17,7 +17,7 @@ $pagina_actual = isset($_GET['pagina']) ? (int)$_GET['pagina'] : 1;
     <div class="container-fluid">
         <div class="card">
             <div class="card-header">
-                <h3 class="card-title">Lista de Clientes Activos</h3>
+                <h3 class="card-title">Lista de Clientes Activos (<?= $total_activos ?>)</h3>
             </div>
             <div class="card-body">
                 <div class="row mb-3">
@@ -218,4 +218,5 @@ $pagina_actual = isset($_GET['pagina']) ? (int)$_GET['pagina'] : 1;
         </div>
 
     </div>
+                        </div>
 </section>
