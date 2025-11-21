@@ -12,8 +12,8 @@ $filtro_empleado = isset($_GET['empleado']) ? $_GET['empleado'] : '';
 .kanban-container .card-row {
     display: inline-block;
     vertical-align: top;
-    width: 30%;
-    margin-right: 3%;
+    width: 23%;
+    margin-right: 2%;
     margin-bottom: 0;
 }
 .kanban-container .card-row:last-child {
@@ -23,6 +23,38 @@ $filtro_empleado = isset($_GET['empleado']) ? $_GET['empleado'] : '';
     min-height: 500px;
     max-height: 70vh;
     overflow-y: auto;
+}
+/* Estilos para tarjetas individuales más compactas */
+.kanban-container .card-row .card-body .card {
+    margin-bottom: 10px;
+    width: 100%;
+}
+
+.kanban-container .card-row .card-body .card .card-header {
+    padding: 8px 12px;
+}
+
+.kanban-container .card-row .card-body .card .card-body {
+    padding: 10px 12px;
+    min-height: auto !important;
+    max-height: none !important;
+}
+
+.kanban-container .card-row .card-body .info-item {
+    margin-bottom: 5px;
+    font-size: 0.95rem; /*Ajustar tamaño de letra */
+}
+
+.kanban-container .card-row .card-body .info-item i {
+    width: 16px;
+    text-align: center;
+    margin-right: 5px;
+}
+
+/* Hacer el badge más compacto */
+.kanban-container .badge {
+    font-size: 0.75rem;
+    padding: 3px 8px;
 }
 @media (max-width: 768px) {
     .kanban-container .card-row {
@@ -135,10 +167,10 @@ $filtro_empleado = isset($_GET['empleado']) ? $_GET['empleado'] : '';
 
     <!-- Main content - Kanban Board nativo AdminLTE -->
     <!-- Content Wrapper. Contains page content -->
-        <div class="content-wrapper kanban">
+      
     <section class="content pb-3">
         
-        <div class="container-fluid h-100">
+        <div class="container-fluid h-100 kanban-container">
             
             
             <!-- Columna 1: Servicios Programados -->
@@ -169,6 +201,13 @@ $filtro_empleado = isset($_GET['empleado']) ? $_GET['empleado'] : '';
                                         <a href="?c=service&a=ReprogramarServicio&id=<?= $servicio->id_service ?>" 
                                         class="btn btn-tool" title="Reprogramar servicio">
                                             <i class="fas fa-edit text-warning"></i>
+                                        </a>
+                                        <!-- BOTÓN DE CANCELAR con confirmación -->
+                                        <a href="?c=service&a=CancelarServicio&id=<?= $servicio->id_service ?>&from=Inicio" 
+                                            class="btn btn-tool" 
+                                            title="Cancelar servicio"
+                                            onclick="return confirm('⚠️ ¿Está seguro que desea CANCELAR el servicio #<?= $servicio->id_service ?> de <?= htmlspecialchars($servicio->name_customer) ?>?\n\nEsta acción no se puede deshacer.');">
+                                            <i class="fas fa-times-circle text-danger"></i>
                                         </a>
                                     </div>
                                 </div>
@@ -364,6 +403,7 @@ $filtro_empleado = isset($_GET['empleado']) ? $_GET['empleado'] : '';
                                     <div id="pdf-status-<?= $servicio->id_service ?>" class="pdf-status-indicator"></div>
                                 </div>
                             </div>
+                                    </div>
                         <?php endforeach; ?>
                     <?php else: ?>
                         <!-- Mensaje cuando no hay servicios finalizados -->
@@ -377,9 +417,80 @@ $filtro_empleado = isset($_GET['empleado']) ? $_GET['empleado'] : '';
                 </div>
             </div>
 
+            <!-- Columna 4: Servicios Cancelados -->
+            <div class="card card-row card-danger">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-ban"></i> Cancelados
+                    </h3>
+                    <div class="card-tools">
+                        <span class="badge badge-danger">
+                            <?= isset($serviciosCancelados) ? count($serviciosCancelados) : 0 ?>
+                        </span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <?php if (isset($serviciosCancelados) && !empty($serviciosCancelados)): ?>
+                        <?php foreach($serviciosCancelados as $servicio): ?>
+                            <!-- Tarjeta individual de servicio cancelado -->
+                            <div class="card card-danger card-outline">
+                                <div class="card-header">
+                                    <h5 class="card-title">
+                                        <strong><?= htmlspecialchars($servicio->name_customer) ?></strong>
+                                    </h5>
+                                    <div class="card-tools">
+                                        <a href="#" class="btn btn-tool btn-link">
+                                            #<?= htmlspecialchars($servicio->id_service) ?>
+                                        </a>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <!-- Información del cliente -->
+                                    <div class="info-item">
+                                        <i class="fas fa-map-marker-alt text-danger"></i>
+                                        <small><?= htmlspecialchars($servicio->address_customer) ?></small>
+                                    </div>
+                                    
+                                    <!-- Fecha programada original -->
+                                    <div class="info-item">
+                                        <i class="fas fa-calendar text-muted"></i>
+                                        <small>
+                                            Programado: <?= $servicio->preset_dt_hr ? date('d/m/Y H:i', strtotime($servicio->preset_dt_hr)) : 'No programado' ?>
+                                        </small>
+                                    </div>
+
+                                    <!-- Empleados asignados -->
+                                    <?php if ($servicio->empleados_asignados): ?>
+                                    <div class="info-item">
+                                        <i class="fas fa-user text-muted"></i>
+                                        <small><?= htmlspecialchars($servicio->empleados_asignados) ?></small>
+                                    </div>
+                                    <?php endif; ?>
+
+                                    <!-- Badge de cancelado -->
+                                    <div class="text-center mt-2">
+                                        <span class="badge badge-danger">
+                                            <i class="fas fa-ban"></i> CANCELADO
+                                        </span>
+                                    </div>
+
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <!-- Mensaje cuando no hay servicios cancelados -->
+                        <div class="card card-light card-outline">
+                            <div class="card-body text-center">
+                                <i class="fas fa-check-circle fa-3x text-muted mb-3"></i>
+                                <p class="text-muted">No hay servicios cancelados</p>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
         </div>
     </section>
-</div>
 </div>
 
 

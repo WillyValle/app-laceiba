@@ -324,9 +324,79 @@
             </div>
             <?php endif; ?>
 
+            <!-- SECCIÓN 3: SERVICIOS CANCELADOS (Cards Rojos) -->
+            <?php if (isset($servicios_cancelados) && !empty($servicios_cancelados)): ?>
+            <div class="row mt-4">
+                <div class="col-12">
+                    <h3 class="text-danger">
+                        <i class="fas fa-ban"></i> 
+                        Servicios Cancelados 
+                        <small class="text-muted">(<?= count($servicios_cancelados) ?>)</small>
+                    </h3>
+                    <p class="text-muted">Estos servicios fueron cancelados por el administrador y no pueden ejecutarse.</p>
+                </div>
+            </div>
+            <div class="row">
+                <?php foreach ($servicios_cancelados as $servicio): ?>
+                <div class="col-lg-4 col-md-6 col-12">
+                    <!-- Small card ROJO para servicios cancelados -->
+                    <div class="small-box bg-danger">
+                        <div class="inner">
+                            <!-- Información del cliente -->
+                            <h4 class="text-white">
+                                <i class="fas fa-building"></i>
+                                <?= htmlspecialchars($servicio->name_customer) ?>
+                            </h4>
+                            
+                            <!-- Número de Servicio -->
+                            <p class="text-white mb-1">
+                                <i class="fas fa-hashtag"></i>
+                                <strong>Servicio No. </strong>
+                                <?= htmlspecialchars($servicio->id_service) ?>
+                            </p>
+
+                            <!-- Badge de CANCELADO -->
+                            <p class="text-white mb-2">
+                                <span class="badge badge-light text-danger font-weight-bold">
+                                    <i class="fas fa-ban"></i> CANCELADO
+                                </span>
+                            </p>
+
+                            <!-- Fecha programada original -->
+                            <p class="text-white mb-1">
+                                <i class="fas fa-calendar-alt"></i>
+                                <strong>Era programado para:</strong> 
+                                <?= date('d/m/Y g:i A', strtotime($servicio->preset_dt_hr)) ?>
+                            </p>
+                            
+                            <!-- Dirección -->
+                            <p class="text-white mb-1">
+                                <i class="fas fa-map-marker-alt"></i>
+                                <strong>Dirección:</strong> 
+                                <?= htmlspecialchars($servicio->address_customer) ?>
+                            </p>
+                        </div>
+                        
+                        <!-- Ícono del card -->
+                        <div class="icon">
+                            <i class="fas fa-ban"></i>
+                        </div>
+                        
+                        <!-- Footer sin acción (deshabilitado) -->
+                        <div class="small-box-footer bg-dark text-white">
+                            <i class="fas fa-lock"></i> Servicio Cancelado
+                        </div>
+                    </div>
+
+                </div>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
+
             <!-- Mensaje cuando no hay servicios -->
             <?php if ((!isset($servicios_programados) || empty($servicios_programados)) && 
-                      (!isset($servicios_iniciados) || empty($servicios_iniciados))): ?>
+                      (!isset($servicios_iniciados) || empty($servicios_iniciados)) &&
+                      (!isset($servicios_cancelados) || empty($servicios_cancelados))): ?>
             <div class="row">
                 <div class="col-12">
                     <div class="card">
@@ -337,7 +407,7 @@
                                 </div>
                                 <h3 class="mt-4 text-muted">No hay servicios asignados</h3>
                                 <p class="text-muted">
-                                    No tiene servicios programados ni en ejecución asignados como encargado en este momento.
+                                    No tiene servicios programados, en ejecución ni cancelados en este momento.
                                     <br>
                                     Los nuevos servicios aparecerán aquí cuando sean asignados.
                                 </p>

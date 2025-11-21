@@ -29,11 +29,13 @@ class ServiceControlador{
         $serviciosProgramados = $this->modelo->ObtenerConFiltros(array_merge($filtros, ['estado' => 1])); // Sin límite
         $serviciosEjecucion = $this->modelo->ObtenerConFiltros(array_merge($filtros, ['estado' => 2])); // Sin límite
         $serviciosFinalizados = $this->modelo->ObtenerConFiltros(array_merge($filtros, ['estado' => 3])); // Sin límite
+        $serviciosCancelados = $this->modelo->ObtenerConFiltros(array_merge($filtros, ['estado' => 4]));
     } else {
         // Sin filtros, obtener por estado normal SIN LÍMITE
         $serviciosProgramados = $this->modelo->ObtenerPorEstado(1); // Estado 1: Programado - Sin límite
         $serviciosEjecucion = $this->modelo->ObtenerPorEstado(2);   // Estado 2: En ejecución - Sin límite
         $serviciosFinalizados = $this->modelo->ObtenerPorEstado(3); // Estado 3: Finalizado - Sin límite
+        $serviciosCancelados = $this->modelo->ObtenerPorEstado(4);  // Estado 4: Cancelado 
     }
     
     require_once "app/vistas/header.php";
@@ -391,7 +393,7 @@ private function ValidarArchivoPDF($archivo, $id_servicio = null){
  */
 public function VistaTecnico(){
     try {
-        // NUEVO: Obtener el ID del empleado de la sesión automáticamente
+        // Obtener el ID del empleado de la sesión automáticamente
         $id_empleado = $this->obtenerIdEmpleadoDesdeLogin();
         
         if ($id_empleado <= 0) {
@@ -399,6 +401,7 @@ public function VistaTecnico(){
             $errores = ["No se pudo identificar al empleado. Por favor, cierre sesión e inicie sesión nuevamente."];
             $servicios_programados = [];
             $servicios_iniciados = [];
+            $servicios_cancelados = []; // AGREGAR
             $total_programados = 0;
             $total_iniciados = 0;
             $total_finalizados_mes = 0;
@@ -406,6 +409,7 @@ public function VistaTecnico(){
             // Obtener servicios normalmente
             $servicios_programados = $this->modelo->ObtenerServiciosProgramadosEmpleado($id_empleado);
             $servicios_iniciados = $this->modelo->ObtenerServiciosIniciadosEmpleado($id_empleado);
+            $servicios_cancelados = $this->modelo->ObtenerServiciosCanceladosEmpleado($id_empleado); // AGREGAR
             
             // Obtener estadísticas
             $total_programados = $this->modelo->ContarServiciosEmpleadoPorEstado($id_empleado, 1);
@@ -425,6 +429,7 @@ public function VistaTecnico(){
         $errores = ["Error al cargar los servicios: " . $e->getMessage()];
         $servicios_programados = [];
         $servicios_iniciados = [];
+        $servicios_cancelados = []; // AGREGAR
         $total_programados = 0;
         $total_iniciados = 0;
         $total_finalizados_mes = 0;
@@ -449,6 +454,23 @@ public function IniciarServicio(){
         
         if ($id_servicio <= 0) {
             throw new Exception("ID de servicio no válido");
+        }
+
+        // Obtener el servicio
+        $servicio = $this->modelo->Obtener($id_servicio);
+        
+        if (!$servicio) {
+            throw new Exception("Servicio no encontrado");
+        }
+        
+        // AGREGAR: Verificar que NO esté cancelado
+        if ($servicio->service_status_id_service_status == 4) {
+            throw new Exception("No se puede iniciar un servicio cancelado");
+        }
+        
+        // Verificar que esté en estado Programado
+        if ($servicio->service_status_id_service_status != 1) {
+            throw new Exception("Solo se pueden iniciar servicios en estado Programado");
         }
         
         if ($id_empleado <= 0) {
@@ -1035,6 +1057,23 @@ public function ContinuarServicio(){
         if ($id_servicio <= 0) {
             throw new Exception("ID de servicio no válido");
         }
+
+        // Obtener el servicio
+        $servicio = $this->modelo->Obtener($id_servicio);
+        
+        if (!$servicio) {
+            throw new Exception("Servicio no encontrado");
+        }
+        
+        // AGREGAR: Verificar que NO esté cancelado
+        if ($servicio->service_status_id_service_status == 4) {
+            throw new Exception("No se puede continuar un servicio cancelado");
+        }
+        
+        // Verificar que esté en estado En Ejecución
+        if ($servicio->service_status_id_service_status != 2) {
+            throw new Exception("Solo se pueden continuar servicios en estado En Ejecución");
+        }
         
         if ($id_empleado <= 0) {
             throw new Exception("No se pudo identificar al empleado");
@@ -1458,6 +1497,66 @@ private function buscarEmpleadoPorUsuarioId($id_usuario){
     } catch (Exception $e) {
         error_log("Error al buscar empleado por usuario: " . $e->getMessage());
         return 0;
+    }
+}
+
+/**
+ * Cancelar un servicio programado
+ * Solo para administradores
+ * Solo puede cancelar servicios en estado Programado (ID 1)
+ */
+public function CancelarServicio(){
+    try {
+        // Verificar permisos de administrador
+        require_once "app/controladores/base.controlador.php";
+        if (!BaseControlador::hasPermission('VIEW_ADMIN_PANEL')) {
+            throw new Exception("No tiene permisos para cancelar servicios");
+        }
+        
+        $id_servicio = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+        
+        if ($id_servicio <= 0) {
+            throw new Exception("ID de servicio no válido");
+        }
+        
+        // Obtener el servicio
+        $servicio = $this->modelo->Obtener($id_servicio);
+        
+        if (!$servicio) {
+            throw new Exception("Servicio no encontrado");
+        }
+        
+        // Verificar que esté en estado Programado (ID 1)
+        if ($servicio->service_status_id_service_status != 1) {
+            $nombre_estado = '';
+            switch($servicio->service_status_id_service_status) {
+                case 2: $nombre_estado = 'En Ejecución'; break;
+                case 3: $nombre_estado = 'Finalizado'; break;
+                case 4: $nombre_estado = 'Cancelado'; break;
+                default: $nombre_estado = 'Estado desconocido';
+            }
+            throw new Exception("Solo se pueden cancelar servicios en estado Programado. Este servicio está en estado: " . $nombre_estado);
+        }
+        
+        // Cambiar el estado a Cancelado (ID 4) - SIN motivo
+        $resultado = $this->modelo->CambiarEstadoServicio($id_servicio, 4);
+        
+        if ($resultado) {
+            $mensaje_exito = "Servicio #" . $id_servicio . " cancelado exitosamente";
+            
+            // Redirigir según desde dónde vino
+            $redirect = isset($_GET['from']) ? $_GET['from'] : 'VistaTablaAdmin';
+            header("location: ?c=service&a=" . $redirect . "&success=" . urlencode($mensaje_exito));
+            exit;
+        } else {
+            throw new Exception("Error al cancelar el servicio");
+        }
+        
+    } catch (Exception $e) {
+        $mensaje_error = $e->getMessage();
+        $redirect = isset($_GET['from']) ? $_GET['from'] : 'VistaTablaAdmin';
+        header("location: ?c=service&a=" . $redirect . "&error=" . urlencode($mensaje_error));
+        exit;
     }
 }
 

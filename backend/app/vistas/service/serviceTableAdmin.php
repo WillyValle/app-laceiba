@@ -233,6 +233,7 @@ $buscar_servicio = isset($_GET['buscar_servicio']) ? $_GET['buscar_servicio'] : 
                                             case 1: $badge_class = 'warning'; break;  // Programado
                                             case 2: $badge_class = 'info'; break;     // En ejecución
                                             case 3: $badge_class = 'success'; break;  // Finalizado
+                                            case 4: $badge_class = 'danger'; break;   // Cancelado
                                             default: $badge_class = 'secondary';
                                         }
                                         ?>
@@ -353,31 +354,40 @@ $buscar_servicio = isset($_GET['buscar_servicio']) ? $_GET['buscar_servicio'] : 
 
                                     <!-- Acciones -->
                                     <td>
-                                        <!-- Botón ver reporte -->
-                                        <?php if ($servicio->service_status_id_service_status == 3): // Solo si está finalizado ?>
-                                        <button id="download-btn-table-<?= $servicio->id_service ?>" 
-                                                onclick="downloadServiceReport(<?= $servicio->id_service ?>)" 
-                                                class="btn btn-sm btn-success mb-1" 
-                                                title="Descargar reporte PDF">
-                                            <i class="fas fa-download"></i> Descargar Reporte
-                                        </button>
-                                        <br>
-                                        <div id="pdf-status-table-<?= $servicio->id_service ?>" class="pdf-status-indicator"></div>
-                                    <?php else: ?>
-                                        <button class="btn btn-sm btn-secondary mb-1" disabled title="Servicio debe estar finalizado">
-                                            <i class="fas fa-download"></i> Descargar Reporte
-                                        </button>
-                                        <br>
-                                        <small class="text-muted">Disponible al finalizar</small>
-                                    <?php endif; ?>
-                                        <br>
-                                        
-                                        <!-- Botón editar si está programado -->
-                                        <?php if ($servicio->service_status_id_service_status == 1 && BaseControlador::hasPermission('MANAGE_SERVICES')): ?>
+                                        <?php if ($servicio->service_status_id_service_status == 1): ?>
+                                            <!-- Servicio Programado: Puede reprogramar o cancelar -->
                                             <a href="?c=service&a=ReprogramarServicio&id=<?= $servicio->id_service ?>" 
-                                               class="btn btn-sm btn-outline-warning" 
-                                               title="Reprogramar">
-                                                <i class="fas fa-edit"></i> Editar
+                                            class="btn btn-sm btn-warning" 
+                                            title="Reprogramar">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a href="?c=service&a=CancelarServicio&id=<?= $servicio->id_service ?>&from=VistaTablaAdmin" 
+                                                class="btn btn-sm btn-danger" 
+                                                title="Cancelar servicio"
+                                                onclick="return confirm('⚠️ ¿Está seguro que desea CANCELAR el servicio #<?= $servicio->id_service ?>?\n\nEsta acción no se puede deshacer.');">
+                                                <i class="fas fa-times-circle"></i> Cancelar
+                                            </a>
+                                        <?php elseif ($servicio->service_status_id_service_status == 3): ?>
+                                            <!-- Servicio Finalizado: Puede descargar PDF -->
+                                            <button id="download-btn-table-<?= $servicio->id_service ?>" 
+                                                    onclick="downloadServiceReport(<?= $servicio->id_service ?>)" 
+                                                    class="btn btn-success btn-sm" 
+                                                    title="Descargar reporte PDF">
+                                                <i class="fas fa-download"></i>
+                                            </button>
+                                            <div id="pdf-status-table-<?= $servicio->id_service ?>" class="pdf-status-indicator"></div>
+                                        <?php elseif ($servicio->service_status_id_service_status == 4): ?>
+                                            <!-- Servicio Cancelado: Sin Acciones -->
+                                            <span class="badge badge-danger">
+                                                <i class="fas fa-ban"></i> Cancelado
+                                            </span>
+                                            
+                                        <?php else: ?>
+                                            <!-- Otros estados -->
+                                            <a href="?c=service&a=VerDetalle&id=<?= $servicio->id_service ?>" 
+                                            class="btn btn-sm btn-info" 
+                                            title="Ver detalles">
+                                                <i class="fas fa-eye"></i>
                                             </a>
                                         <?php endif; ?>
                                     </td>

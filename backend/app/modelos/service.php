@@ -654,14 +654,14 @@ public function ValidarEstadoServicio($id_estado){
 // NUEVOS MÉTODOS AGREGADOS AL MODELO service.php
 
 /**
- * Obtener servicios programados asignados a un empleado como encargado
- * @param int $id_empleado ID del empleado encargado
+ * Obtener servicios programados asignados a un empleado específico
+ * Solo servicios en estado Programado (ID 1)
+ * @param int $id_empleado ID del empleado
  * @return array Servicios programados del empleado
  */
 public function ObtenerServiciosProgramadosEmpleado($id_empleado){
-    try{
-        $sql = "
-        SELECT DISTINCT
+    try {
+        $sql = "SELECT DISTINCT
             s.id_service,
             s.notes,
             s.preset_dt_hr,
@@ -680,24 +680,31 @@ public function ObtenerServiciosProgramadosEmpleado($id_empleado){
         INNER JOIN CUSTOMER c ON s.customer_id_customer = c.id_customer
         INNER JOIN SERVICE_STATUS ss ON s.service_status_id_service_status = ss.id_service_status
         INNER JOIN SRVIC_EMPLOYEE se ON s.id_service = se.service_id_service
-        INNER JOIN EMPLOYEE e_enc ON se.employee_id_employee = e_enc.id_employee
         INNER JOIN ROLE_IN_SERVICE ris ON se.role_in_service_id_role_in_service = ris.id_role_in_service
+        LEFT JOIN SRVIC_EMPLOYEE se_enc ON s.id_service = se_enc.service_id_service 
+            AND se_enc.role_in_service_id_role_in_service = (
+                SELECT id_role_in_service 
+                FROM ROLE_IN_SERVICE 
+                WHERE LOWER(name_role_in_service) LIKE '%encargado%' 
+                LIMIT 1
+            )
+        LEFT JOIN EMPLOYEE e_enc ON se_enc.employee_id_employee = e_enc.id_employee
         WHERE se.employee_id_employee = :id_empleado
         AND (
             LOWER(ris.name_role_in_service) LIKE '%encargado%'
             OR LOWER(ris.name_role_in_service) LIKE '%asistente%'
         )
-        AND s.service_status_id_service_status = 1
-        AND s.preset_dt_hr >= CURDATE()
-        ORDER BY s.preset_dt_hr ASC
-        ";
+        AND s.service_status_id_service_status = 1  -- Solo Programados (NO cancelados)
+        ORDER BY s.preset_dt_hr ASC";
         
         $consulta = $this->pdo->prepare($sql);
-        $consulta->bindParam(':id_empleado', $id_empleado, PDO::PARAM_INT);
-        $consulta->execute();
+        $consulta->execute(['id_empleado' => $id_empleado]);
+        
         return $consulta->fetchAll(PDO::FETCH_OBJ);
-    }catch(Exception $e){
-        throw new Exception("Error al obtener servicios programados del empleado: " . $e->getMessage());
+        
+    } catch (Exception $e) {
+        error_log("Error al obtener servicios programados del empleado: " . $e->getMessage());
+        return [];
     }
 }
 
@@ -2037,6 +2044,80 @@ public function ObtenerEmpleadoPorId($id_empleado){
     }catch(Exception $e){
         error_log("Error al obtener empleado: " . $e->getMessage());
         return null;
+    }
+}
+
+/**
+ * Cambiar el estado de un servicio
+ * @param int $id_servicio ID del servicio
+ * @param int $nuevo_estado_id Nuevo ID de estado
+ * @return bool True si se actualizó correctamente
+ */
+public function CambiarEstadoServicio($id_servicio, $nuevo_estado_id){
+    try {
+        $sql = "UPDATE SERVICE 
+                SET service_status_id_service_status = ?
+                WHERE id_service = ?";
+        
+        $stmt = $this->pdo->prepare($sql);
+        return $stmt->execute([$nuevo_estado_id, $id_servicio]);
+        
+    } catch (Exception $e) {
+        error_log("Error al cambiar estado del servicio: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Obtener servicios cancelados asignados a un empleado específico
+ * Solo servicios en estado Cancelado (ID 4)
+ * @param int $id_empleado ID del empleado
+ * @return array Servicios cancelados del empleado
+ */
+public function ObtenerServiciosCanceladosEmpleado($id_empleado){
+    try {
+        $sql = "SELECT DISTINCT
+            s.id_service,
+            s.notes,
+            s.preset_dt_hr,
+            s.customer_id_customer,
+            c.name_customer,
+            c.address_customer,
+            c.whatsapp as customer_whatsapp,
+            c.tel as customer_tel,
+            s.service_status_id_service_status,
+            ss.name_service_status,
+            CONCAT(e_enc.name_employee, ' ', e_enc.lastname_employee) as empleado_encargado,
+            ris.name_role_in_service as rol_tecnico
+        FROM SERVICE s
+        INNER JOIN CUSTOMER c ON s.customer_id_customer = c.id_customer
+        INNER JOIN SERVICE_STATUS ss ON s.service_status_id_service_status = ss.id_service_status
+        INNER JOIN SRVIC_EMPLOYEE se ON s.id_service = se.service_id_service
+        INNER JOIN ROLE_IN_SERVICE ris ON se.role_in_service_id_role_in_service = ris.id_role_in_service
+        LEFT JOIN SRVIC_EMPLOYEE se_enc ON s.id_service = se_enc.service_id_service 
+            AND se_enc.role_in_service_id_role_in_service = (
+                SELECT id_role_in_service 
+                FROM ROLE_IN_SERVICE 
+                WHERE LOWER(name_role_in_service) LIKE '%encargado%' 
+                LIMIT 1
+            )
+        LEFT JOIN EMPLOYEE e_enc ON se_enc.employee_id_employee = e_enc.id_employee
+        WHERE se.employee_id_employee = :id_empleado
+        AND (
+            LOWER(ris.name_role_in_service) LIKE '%encargado%'
+            OR LOWER(ris.name_role_in_service) LIKE '%asistente%'
+        )
+        AND s.service_status_id_service_status = 4  -- Solo Cancelados
+        ORDER BY s.preset_dt_hr DESC";
+        
+        $consulta = $this->pdo->prepare($sql);
+        $consulta->execute(['id_empleado' => $id_empleado]);
+        
+        return $consulta->fetchAll(PDO::FETCH_OBJ);
+        
+    } catch (Exception $e) {
+        error_log("Error al obtener servicios cancelados del empleado: " . $e->getMessage());
+        return [];
     }
 }
 
