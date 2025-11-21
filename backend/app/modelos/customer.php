@@ -182,4 +182,89 @@ class Customer{
             die($e->getMessage());
         }
     }
+
+    public function ListarConPaginacion($busqueda = '', $pagina = 1, $por_pagina = 30, $solo_activos = true){
+    try{
+        $offset = ($pagina - 1) * $por_pagina;
+        
+        $where = $solo_activos ? "WHERE c.status = 1" : "WHERE c.status = 0";
+        
+        if (!empty($busqueda)) {
+            $where .= " AND (c.name_customer LIKE :busqueda 
+                        OR c.address_customer LIKE :busqueda 
+                        OR c.doc_num LIKE :busqueda 
+                        OR c.whatsapp LIKE :busqueda 
+                        OR c.tel LIKE :busqueda 
+                        OR c.mail LIKE :busqueda 
+                        OR td.name_type_doc LIKE :busqueda)";
+        }
+        
+        $consulta = $this->pdo->prepare("
+            SELECT 
+                c.id_customer, 
+                c.name_customer, 
+                c.address_customer, 
+                c.type_doc_id_type_doc,
+                td.name_type_doc,
+                c.doc_num, 
+                c.whatsapp, 
+                c.tel, 
+                c.mail, 
+                c.status 
+            FROM CUSTOMER c
+            LEFT JOIN TYPE_DOC td ON c.TYPE_DOC_ID_TYPE_DOC = td.ID_TYPE_DOC
+            $where
+            ORDER BY c.name_customer
+            LIMIT :limit OFFSET :offset
+        ");
+        
+        if (!empty($busqueda)) {
+            $busqueda_param = "%$busqueda%";
+            $consulta->bindParam(':busqueda', $busqueda_param, PDO::PARAM_STR);
+        }
+        
+        $consulta->bindValue(':limit', (int)$por_pagina, PDO::PARAM_INT);
+        $consulta->bindValue(':offset', (int)$offset, PDO::PARAM_INT);
+        $consulta->execute();
+        
+        return $consulta->fetchAll(PDO::FETCH_OBJ);
+    }catch(Exception $e){
+        die($e->getMessage());
+    }
+}
+
+public function ContarClientes($busqueda = '', $solo_activos = true){
+    try{
+        $where = $solo_activos ? "WHERE c.status = 1" : "WHERE c.status = 0";
+        
+        if (!empty($busqueda)) {
+            $where .= " AND (c.name_customer LIKE :busqueda 
+                        OR c.address_customer LIKE :busqueda 
+                        OR c.doc_num LIKE :busqueda 
+                        OR c.whatsapp LIKE :busqueda 
+                        OR c.tel LIKE :busqueda 
+                        OR c.mail LIKE :busqueda 
+                        OR td.name_type_doc LIKE :busqueda)";
+        }
+        
+        $consulta = $this->pdo->prepare("
+            SELECT COUNT(*) as total
+            FROM CUSTOMER c
+            LEFT JOIN TYPE_DOC td ON c.TYPE_DOC_ID_TYPE_DOC = td.ID_TYPE_DOC
+            $where
+        ");
+        
+        if (!empty($busqueda)) {
+            $busqueda_param = "%$busqueda%";
+            $consulta->bindParam(':busqueda', $busqueda_param, PDO::PARAM_STR);
+        }
+        
+        $consulta->execute();
+        $resultado = $consulta->fetch(PDO::FETCH_OBJ);
+        return $resultado->total;
+    }catch(Exception $e){
+        die($e->getMessage());
+    }
+}
+
 }

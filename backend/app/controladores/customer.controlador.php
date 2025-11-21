@@ -9,6 +9,21 @@ class CustomerControlador{
     }
 
     public function Inicio(){
+        // Obtener parámetros de búsqueda y paginación
+        $busqueda = isset($_GET['busqueda']) ? trim($_GET['busqueda']) : '';
+        $pagina = isset($_GET['pagina']) ? (int)$_GET['pagina'] : 1;
+        $por_pagina = 30;
+        
+        // Obtener datos activos
+        $clientes_activos = $this->modelo->ListarConPaginacion($busqueda, $pagina, $por_pagina, true);
+        $total_activos = $this->modelo->ContarClientes($busqueda, true);
+        $total_paginas_activos = ceil($total_activos / $por_pagina);
+        
+        // Obtener datos inactivos
+        $clientes_inactivos = $this->modelo->ListarConPaginacion($busqueda, $pagina, $por_pagina, false);
+        $total_inactivos = $this->modelo->ContarClientes($busqueda, false);
+        $total_paginas_inactivos = ceil($total_inactivos / $por_pagina);
+
         require_once "app/vistas/header.php";
         require_once "app/vistas/customer/listcustomer.php";
         require_once "app/vistas/footer.php";
@@ -56,5 +71,13 @@ class CustomerControlador{
         $this->modelo->Insertar($c);
         
         header("location: ?c=customer");
+    }
+
+    private function construirUrlPaginacion($pagina){
+        $params = $_GET;
+        $params['pagina'] = $pagina;
+        unset($params['c']);
+        unset($params['a']);
+        return "?c=customer&" . http_build_query($params);
     }
 }
