@@ -68,8 +68,16 @@ $id_servicio_param = $es_edicion && isset($servicio_actual) ? '&id=' . $servicio
         <div class="col-md-6">
           <div class="form-group">
             <label for="customer_id_customer">Cliente<span class="text-danger">*</span></label>
-            <select class="form-control" id="customer_id_customer" name="customer_id_customer" required>
-              <option value="">Seleccione...</option>
+            
+              <input type="text" 
+                class="form-control mb-2" 
+                id="buscar_cliente" 
+                placeholder="Escribe para buscar cliente..."
+                autocomplete="off">
+              <small class="text-muted">Se muestran máximo 4 clientes. Use el buscador para filtrar.</small>
+
+            <select class="form-control" id="customer_id_customer" name="customer_id_customer" required size="4">
+
               <?php if (!empty($clientes)): ?>
                 <?php foreach ($clientes as $cliente): ?>
                   <option value="<?php echo $cliente->id_customer; ?>"
@@ -86,6 +94,7 @@ $id_servicio_param = $es_edicion && isset($servicio_actual) ? '&id=' . $servicio
                 <?php endforeach; ?>
               <?php endif; ?>
             </select>
+
           </div>
         </div>
         <?php if ($es_edicion): ?>
@@ -377,6 +386,37 @@ document.addEventListener('DOMContentLoaded', function() {
     const ahora = new Date();
     ahora.setMinutes(ahora.getMinutes() - ahora.getTimezoneOffset());
     fechaInput.min = ahora.toISOString().slice(0, 16);
+    
+    // Función para filtrar select
+    function filtrarSelect(inputId, selectId) {
+        const input = document.getElementById(inputId);
+        const select = document.getElementById(selectId);
+        
+        input.addEventListener('input', function() {
+            const filtro = this.value.toLowerCase();
+            const opciones = select.options;
+            
+            for (let i = 0; i < opciones.length; i++) {
+                const texto = opciones[i].text.toLowerCase();
+                if (texto.includes(filtro) || opciones[i].value === '') {
+                    opciones[i].style.display = '';
+                } else {
+                    opciones[i].style.display = 'none';
+                }
+            }
+        });
+        
+        // Al seleccionar, actualizar el input de búsqueda
+        select.addEventListener('change', function() {
+            if (this.value !== '') {
+                input.value = this.options[this.selectedIndex].text;
+            }
+        });
+    }
+    
+    // Aplicar filtros
+    filtrarSelect('buscar_cliente', 'customer_id_customer');
+    filtrarSelect('buscar_empleado', 'empleado_encargado');
     
     // Mejorar la experiencia del select múltiple
     const selectAsistentes = document.getElementById('empleados_asistentes');
